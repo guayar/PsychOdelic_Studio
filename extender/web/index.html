@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><title>PsychOdelic Extender</title>
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#111318;color:#e8e8ee;display:flex;height:100vh}
+#left{width:320px;border-right:1px solid #2a2e38;padding:12px;overflow:auto}
+#right{flex:1;padding:16px;overflow:auto}
+.node{padding:6px 8px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.node.sel{background:#22283a}
+.node .meta{color:#8a90a0;font-size:12px}
+button{background:#1d2230;color:#e8e8ee;border:1px solid #3a4152;border-radius:6px;padding:6px 10px;cursor:pointer}
+button.danger{border-color:#7a2a2a;color:#ffb4b4}
+button.primary{background:#2a6f63;border-color:#2a6f63}
+input,textarea,select{background:#0c0e13;color:#e8e8ee;border:1px solid #3a4152;border-radius:6px;padding:6px;width:100%;box-sizing:border-box}
+.row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.card{border:1px solid #2a2e38;border-radius:10px;padding:12px;margin:10px 0}
+pre{background:#0c0e13;padding:10px;border-radius:8px;overflow:auto;max-height:260px;font-size:12px}
+video{width:100%;max-height:360px;background:#000;border-radius:8px}
+.hint{color:#8a90a0;font-size:12px}
+</style></head><body>
+<div id="left"><h3>Drzewo scen</h3>
+  <div class="row"><input id="newTitle" placeholder="nowa scena (pod wybrana)"></div>
+  <div class="row"><button class="primary" onclick="addScene()">+ dodaj pod wybrana</button>
+  <button onclick="addRoot()">+ korzen</button></div>
+  <div id="tree"></div></div>
+<div id="right"><div id="editor"><p class="hint">Wybierz scene z listy.</p></div></div>
+<script>
+let state={scenes:[],root:null,oug_dir:"",sel:null};
+const $=id=>document.getElementById(id);
+async function api(m,u,b){const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.detail||r.statusText); return j;}
+async function load(){state=await api('GET','/api/tree'); renderTree(); if(state.sel||state.scenes.length) renderEditor();}
+function byId(id){return state.scenes.find(s=>s.id===id);}
+function renderTree(){
+  const t=$('tree'); t.innerHTML='';
+  function walk(id,depth){const s=byId(id); if(!s) return;
+    const d=document.createElement('div'); d.className='node'+(state.sel===id?' sel':''); d.style.paddingLeft=(8+depth*16)+'px';
+    d.innerHTML=`${s.title}<div class="meta">${s.id} · postacie: ${s.effective_refs.length}${s.output?' · wynik':''}</div>`;
+    d.onclick=()=>{state.sel=id; renderTree(); renderEditor();}; t.appendChild(d);
+    s.children.forEach(c=>walk(c,depth+1));}
+  if(state.root) walk(state.root,0);
+  if(!state.root) t.innerHTML='<p class="hint">Brak drzewa. Dodaj korzen.</p>';
+}
+async function addRoot(){const title=$('newTitle').value||'Scena'; await api('POST','/api/scenes',{title,parent:null,prompt:''}); $('newTitle').value=''; load();}
+async function addScene(){ if(!state.sel) return alert('wybierz scene nadrzedna'); const title=$('newTitle').value||'Scena';
+  await api('POST','/api/scenes',{title,parent:state.sel,prompt:''}); $('newTitle').value=''; load();}
+async function delScene(){ const s=byId(state.sel); if(!s) return;
+  if(!confirm(`Usunac scene "${s.title}"? Pliki na dysku zostaja.`)) return;
+  try{ await api('DELETE',`/api/scenes/${s.id}`); }
+  catch(e){ if(!confirm(e.message+'\n\nUsunac cala galaz razem z potomkami?')) return; await api('DELETE',`/api/scenes/${s.id}?cascade=true`); }
+  state.sel=null; load();}
+function renderEditor(){
+  const s=byId(state.sel); if(!s){$('editor').innerHTML='<p class="hint">Wybierz scene z listy.</p>'; return;}
+  const c=s.settings; const sv=(k)=>{return k.split('.').reduce((o,x)=>o&&o[x],c);};
+  $('editor').innerHTML=`
+  <h2>${s.title} <span class="hint">${s.id}</span></h2>
+  <div class="card"><div class="row"><input id="ftitle" value="${s.title}"></div>
+    <textarea id="fprompt" rows="5" placeholder="prompt (po angielsku)">${s.prompt||''}</textarea>
+    <div class="row"><button class="primary" onclick="savePrompt()">Zapisz scene</button>
+    <button class="danger" onclick="delScene()">Usun scene</button></div></div>
+  <div class="card"><h4>Postacie (dziedzicza sie w dol drzewa)</h4>
+    <div class="row"><input id="fref" placeholder="nazwa pliku z ComfyUI/input, np. gardener.png"><button onclick="addRef()">+ dodaj</button></div>
+    ${s.effective_refs.map(r=>`<div class="row"><code>${r}</code>${s.own_refs?'':''}<button onclick="delRef('${r}')">usun z tej sceny</button></div>`).join('')||'<p class="hint">brak</p>'}
+  </div>
+  <div class="card"><h4>Ustawienia (zapisywane w tej scenie)</h4>
+    <div class="row"><label><input type="checkbox" ${c.fullres?'checked':''} onchange="setS('fullres',this.checked)"> pelna rozdzielczosc 1344x768</label>
+      <label><input type="checkbox" ${c.refine?'checked':''} onchange="setS('refine',this.checked)"> refine</label></div>
+    <div class="row">Dlugosci segmentow (s, po przecinku): <input id="fdurs" value="${(c.durs||[]).join(',')}" onchange="setS('durs',this.value.split(',').map(Number))"></div>
+    <div class="row"><label><input type="checkbox" ${c.sharpen.enabled?'checked':''} onchange="setS('sharpen.enabled',this.checked)"> wyostrzanie</label>
+      sila <input style="width:90px" value="${c.sharpen.amount}" onchange="setS('sharpen.amount',Number(this.value))"></div>
+    <div class="row"><label><input type="checkbox" ${c.color.enabled?'checked':''} onchange="setS('color.enabled',this.checked)"> korekcja barw</label>
+      jasnosc <input style="width:70px" value="${c.color.brightness}" onchange="setS('color.brightness',Number(this.value))">
+      kontrast <input style="width:70px" value="${c.color.contrast}" onchange="setS('color.contrast',Number(this.value))">
+      nasycenie <input style="width:70px" value="${c.color.saturation}" onchange="setS('color.saturation',Number(this.value))">
+      gamma <input style="width:70px" value="${c.color.gamma}" onchange="setS('color.gamma',Number(this.value))"></div>
+    <div class="row"><label><input type="checkbox" ${c.lms.enabled?'checked':''} onchange="setS('lms.enabled',this.checked)"> LMS</label>
+      komenda LMS (z {in} {out}): <input value="${c.lms.command||''}" onchange="setS('lms.command',this.value)"></div>
+    <div class="row"><label><input type="checkbox" ${c.controlnet.enabled?'checked':''} onchange="setS('controlnet.enabled',this.checked)"> ControlNet</label>
+      plik sterujacy (ComfyUI/input): <input value="${c.controlnet.ctrl||''}" onchange="setS('controlnet.ctrl',this.value)"></div>
+  </div>
+  <div class="card"><h4>Segment</h4>
+    <div class="row"><button onclick="gen(false)">Pokaz komende (bez uruchamiania)</button>
+    <button class="primary" onclick="gen(true)">Wygeneruj segment</button>
+    <span class="hint">${state.oug_dir?'katalog OUG: '+state.oug_dir:'brak katalogu OUG (uruchom z --oug)'}</span></div>
+    <div id="genout"></div>
+    ${s.output?`<h4>Wynik: ${s.output}</h4><video controls src="/api/file?name=${encodeURIComponent(s.output)}"></video>`:''}
+  </div>`;
+}
+async function savePrompt(){const s=byId(state.sel); await api('PUT',`/api/scenes/${s.id}/prompt`,{title:$('ftitle').value,prompt:$('fprompt').value,parent:null}); load();}
+async function setS(path,value){await api('PUT',`/api/scenes/${state.sel}/setting`,{path,value}); load();}
+async function addRef(){const n=$('fref').value.trim(); if(!n) return; try{await api('POST',`/api/scenes/${state.sel}/refs`,{name:n});}catch(e){alert(e.message)} load();}
+async function delRef(n){await api('DELETE',`/api/scenes/${state.sel}/refs/${encodeURIComponent(n)}`); load();}
+async function gen(exec){ if(exec && !confirm('Uruchomic extender dla tej sceny? Zuzywa GPU.')) return;
+  $('genout').innerHTML='<p class="hint">…</p>';
+  try{ const r=await api('POST',`/api/scenes/${state.sel}/generate`,{execute:exec});
+    $('genout').innerHTML=`<pre>${JSON.stringify(r.plan,null,2)}</pre>`+(r.log?`<pre>${r.log.replace(/</g,'&lt;')}</pre>`:'')+(r.ok===false?'<p style="color:#ffb4b4">Blad extendera (patrz log).</p>':'');
+    if(exec) load(); }catch(e){ $('genout').innerHTML=`<p style="color:#ffb4b4">${e.message}</p>`; } }
+load();
+</script></body></html>
