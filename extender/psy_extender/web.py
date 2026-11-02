@@ -1,6 +1,7 @@
 """Podglad drzewa scen: lista, dodawanie, usuwanie, ustawienia i generowanie segmentu. Tylko 127.0.0.1."""
 import argparse
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -34,10 +35,11 @@ class GenIn(BaseModel):
     prefix: str = ""
 
 
-def create_app(chain_path, oug_dir="", comfy_output=None):
+def create_app(chain_path, oug_dir="", comfy_output=None, comfy_input=None):
     tree = Tree(chain_path)
     app = FastAPI(title="PsychOdelic Extender")
     comfy_output = Path(comfy_output or Path.home() / "ComfyUI" / "output")
+    comfy_input = Path(comfy_input or Path.home() / "ComfyUI" / "input")
 
     def _err(exc):
         raise HTTPException(422, str(exc))
@@ -148,6 +150,12 @@ def create_app(chain_path, oug_dir="", comfy_output=None):
         if proc.returncode != 0:
             return {"executed": True, "ok": False, "returncode": proc.returncode, "log": log, "plan": plan}
         output = prefix.replace("/", "_") + ".mp4"
+        # kontynuacja (CONT) czyta plik z ComfyUI/input: kopiujemy wynik tam (bez nadpisywania istniejacego)
+        src = comfy_output / output
+        if src.is_file():
+            comfy_input.mkdir(parents=True, exist_ok=True)
+            if not (comfy_input / output).exists():
+                shutil.copy2(src, comfy_input / output)
         sc = tree.scene(sid)
         sc["output"] = output
         tree.save()
@@ -169,6 +177,7 @@ if __name__ == "__main__":
     ap.add_argument("--chain", default=str(HERE / "chain.json"))
     ap.add_argument("--oug", default="")
     ap.add_argument("--comfy-output", default=str(Path.home() / "ComfyUI" / "output"))
+    ap.add_argument("--comfy-input", default=str(Path.home() / "ComfyUI" / "input"))
     ap.add_argument("--port", type=int, default=8790)
     a = ap.parse_args()
-    uvicorn.run(create_app(a.chain, a.oug, a.comfy_output), host="127.0.0.1", port=a.port)
+    uvicorn.run(create_app(a.chain, a.oug, a.comfy_output, a.comfy_input), host="127.0.0.1", port=a.port)

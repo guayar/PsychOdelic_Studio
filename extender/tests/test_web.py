@@ -53,10 +53,12 @@ def test_execute_writes_prompt_and_records_output(tmp_path):
         "pathlib.Path(os.environ['COMFY_OUT'], prefix.replace('/', '_') + '.mp4').write_bytes(open(prompt, 'rb').read())\n",
         encoding="utf-8")
     os.environ["COMFY_OUT"] = str(out)
-    c = TestClient(create_app(str(tmp_path / "chain.json"), oug_dir=str(oug), comfy_output=str(out)))
+    inp = tmp_path / "input"
+    c = TestClient(create_app(str(tmp_path / "chain.json"), oug_dir=str(oug), comfy_output=str(out), comfy_input=str(inp)))
     sid = c.post("/api/scenes", json={"title": "A", "prompt": "The gardener stands still."}).json()["id"]
     r = c.post(f"/api/scenes/{sid}/generate", json={"execute": True}).json()
     assert r["ok"] is True and r["output"] == f"ext_{sid}.mp4"
     assert (oug / "_docs" / "studio_prompts" / f"{sid}.txt").read_text(encoding="utf-8") == "The gardener stands still."
     assert c.get("/api/file", params={"name": r["output"]}).status_code == 200
+    assert (inp / r["output"]).is_file(), "wynik musi trafic do ComfyUI/input jako CONT nastepnej sceny"
     assert next(s for s in c.get("/api/tree").json()["scenes"] if s["id"] == sid)["output"] == r["output"]
