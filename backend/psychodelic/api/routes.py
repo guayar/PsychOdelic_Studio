@@ -17,7 +17,7 @@ from ..jobs import JobActive, JobStore
 from ..media.timeline import Clip, TimelineError, export_csv, export_json, validate
 from ..orchestrator.gpu import decide_render, read_vram
 from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list, unload as llm_unload
-from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
+from ..adapters.comfy_scene import SceneError, build_scene_graph, history as comfy_history, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..comfy_input import default_input_dir, list_inputs, resolve_input_file
 from ..fs_browse import copy_into, import_to_input, list_dir, resolve_file
@@ -265,6 +265,52 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
         with lock:
             _project_or_404(pid)
             return jobs.clear(pid)
+
+    @app.post("/api/projects/{pid}/jobs/sync")
+    def jobs_sync(pid: str):
+        with lock:
+            _project_or_404(pid)
+            rows = conn.execute("SELECT id, prompt_id FROM jobs WHERE project_id = ? AND state = 'RENDER_QUEUED'"
+                                " AND prompt_id IS NOT NULL", (pid,)).fetchall()
+        result = {"checked": 0, "finished": 0, "failed": 0, "waiting": 0, "unreachable": 0}
+        for r in rows:
+            result["checked"] += 1
+            try:
+                entry = comfy_history(comfy_url, r["prompt_id"])
+            except (OSError, ValueError):
+                result["unreachable"] += 1
+                continue
+            if entry is None:
+                result["waiting"] += 1
+                continue
+            status = (entry.get("status") or {}).get("status_str")
+            with lock:
+                if status == "error":
+                    jobs.transition(r["id"], "FAILED", error="ComfyUI: blad wykonania (zobacz logi ComfyUI)")
+                    result["failed"] += 1
+                    continue
+                files = []
+                for node in (entry.get("outputs") or {}).values():
+                    for img in node.get("images", []):
+                        files.append(f"{img.get('subfolder', '')}/{img.get('filename', '')}".lstrip("/"))
+                for st in ("RENDERING", "OUTPUT_VALIDATING", "POSTPROCESSING", "AWAITING_USER_REVIEW"):
+                    jobs.transition(r["id"], st)
+                conn.execute("INSERT INTO audit_events (project_id, job_id, event, detail_json, created_at)"
+                             " VALUES (?, ?, 'comfy_outputs', ?, ?)",
+                             (pid, r["id"], json.dumps({"files": files}, ensure_ascii=False), utc_now()))
+                result["finished"] += 1
+        return result
+
+    @app.post("/api/jobs/{job_id}/cancel")
+    def job_cancel(job_id: str):
+        with lock:
+            job = jobs.get(job_id)
+            if job is None:
+                raise HTTPException(404, "brak zadania")
+            if job["state"] != "RENDER_QUEUED":
+                raise HTTPException(409, "anulowac mozna tylko zadanie w kolejce")
+            jobs.transition(job_id, "CANCELLED", error="anulowane w studiu (jesli ComfyUI wciaz je wykonuje, zatrzymaj je w ComfyUI)")
+            return jobs.get(job_id)
 
     @app.get("/api/jobs/{job_id}/events")
     def job_events(job_id: str):

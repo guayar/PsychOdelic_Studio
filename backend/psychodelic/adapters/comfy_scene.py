@@ -88,3 +88,10 @@ def submit(comfy_url, graph, timeout=30.0):
     if "prompt_id" not in data:
         raise ValueError("ComfyUI nie zwrocil prompt_id")
     return data["prompt_id"]
+
+
+def history(comfy_url, prompt_id, timeout=10.0):
+    """Wpis historii ComfyUI dla zlecenia albo None (jeszcze w kolejce / nieznane)."""
+    with urllib.request.urlopen(f"{_local(comfy_url)}/history/{prompt_id}", timeout=timeout) as resp:
+        data = json.load(resp)
+    return data.get(prompt_id) or None

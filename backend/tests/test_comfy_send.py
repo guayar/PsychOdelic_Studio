@@ -11,6 +11,7 @@ from psychodelic.app import create_app
 
 COMFY_SEEN, OLLAMA_SEEN = [], []
 COMFY_MODE = {"reject": False}
+HISTORY = {}
 
 
 def _server(handler_cls):
@@ -44,6 +45,10 @@ class _Comfy(_Base):
         COMFY_SEEN.append(body)
         self._json(200, {"prompt_id": "pid-123", "number": 1})
 
+    def do_GET(self):
+        pid = self.path.rsplit("/", 1)[-1]
+        self._json(200, {pid: HISTORY[pid]} if pid in HISTORY else {})
+
 
 class _Ollama(_Base):
     def do_POST(self):
@@ -53,7 +58,7 @@ class _Ollama(_Base):
 
 @pytest.fixture()
 def servers():
-    COMFY_SEEN.clear(); OLLAMA_SEEN.clear(); COMFY_MODE["reject"] = False
+    COMFY_SEEN.clear(); OLLAMA_SEEN.clear(); COMFY_MODE["reject"] = False; HISTORY.clear()
     comfy, ollama = _server(_Comfy), _server(_Ollama)
     yield (f"http://127.0.0.1:{comfy.server_address[1]}", f"http://127.0.0.1:{ollama.server_address[1]}")
     comfy.shutdown(); ollama.shutdown()
@@ -152,3 +157,23 @@ def test_scene_without_references_has_no_image_inputs():
     assert not any((k.startswith("ref_image") and k != "ref_image_size") or k.startswith("ref_images") for k in n)
     assert n["ref_image_size"] == "match" and n["prompt"] == "Ogrodnik stoi."
     assert not any(v.get("class_type") == "LoadImage" for v in g.values())
+
+
+def test_sync_marks_error_and_success_and_cancel_works(tmp_path, servers):
+    comfy, ollama = servers
+    c = TestClient(create_app(data_dir=tmp_path / "d", comfy_url=comfy, llm_url=ollama))
+    c.put("/api/settings", json={"render_enabled": True})
+    pid = _project(c)
+    assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
+    HISTORY["pid-123"] = {"status": {"status_str": "error", "completed": True, "messages": []}, "outputs": {}}
+    assert c.post(f"/api/projects/{pid}/jobs/sync").json()["failed"] == 1
+    assert c.get(f"/api/projects/{pid}/jobs").json()[0]["state"] == "FAILED"
+    assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
+    HISTORY["pid-123"] = {"status": {"status_str": "success", "completed": True, "messages": []},
+                          "outputs": {"14": {"images": [{"filename": "shot_01_00001_.png", "subfolder": "shots"}]}}}
+    assert c.post(f"/api/projects/{pid}/jobs/sync").json()["finished"] == 1
+    assert c.get(f"/api/projects/{pid}/jobs").json()[0]["state"] == "AWAITING_USER_REVIEW"
+    assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
+    job_id = c.get(f"/api/projects/{pid}/jobs").json()[0]["id"]
+    assert c.post(f"/api/jobs/{job_id}/cancel").json()["state"] == "CANCELLED"
+    assert c.post(f"/api/jobs/{job_id}/cancel").status_code == 409

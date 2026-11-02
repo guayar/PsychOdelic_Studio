@@ -25,6 +25,20 @@ export function JobsTab({ project }: { project: Project }) {
     } catch (e) { setMsg((e as Error).message); }
   }
 
+  async function cancelJob(id: string) {
+    if (!window.confirm(t("jobs.cancelConfirm"))) return;
+    try { await api.post(`/api/jobs/${id}/cancel`); setMsg(null); load(); }
+    catch (e) { setMsg((e as Error).message); }
+  }
+
+  async function syncComfy() {
+    try {
+      const r = await api.post<{ checked: number; finished: number; failed: number; waiting: number; unreachable: number }>(`/api/projects/${project.id}/jobs/sync`);
+      setMsg(t("jobs.syncResult", r));
+      load();
+    } catch (e) { setMsg((e as Error).message); }
+  }
+
   async function clearAll() {
     if (!window.confirm(t("jobs.clearConfirm"))) return;
     try {
@@ -43,7 +57,10 @@ export function JobsTab({ project }: { project: Project }) {
       </div>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span className="hint">{msg}</span>
-        <button className="ghost danger" onClick={clearAll} disabled={jobs.length === 0}>{t("jobs.clear")}</button>
+        <div className="row" style={{ gap: 6 }}>
+          <button onClick={syncComfy} disabled={!jobs.some((j) => j.state === "RENDER_QUEUED")}>{t("jobs.sync")}</button>
+          <button className="ghost danger" onClick={clearAll} disabled={jobs.length === 0}>{t("jobs.clear")}</button>
+        </div>
       </div>
       {jobs.length === 0 ? (
         <div className="empty">{t("jobs.empty")}</div>
@@ -60,6 +77,7 @@ export function JobsTab({ project }: { project: Project }) {
                   <td className="mono">{j.updated_at.replace("T", " ").slice(0, 19)}</td>
                   <td>
                     <button onClick={() => setOpen(open === j.id ? null : j.id)}>{open === j.id ? t("jobs.hide") : t("jobs.show")}</button>{" "}
+                    {j.state === "RENDER_QUEUED" && <button className="ghost danger" onClick={() => cancelJob(j.id)}>{t("jobs.cancel")}</button>}{" "}
                     <button className="ghost danger" onClick={() => removeJob(j.id)} disabled={ACTIVE.has(j.state)}
                       title={ACTIVE.has(j.state) ? t("jobs.activeHint") : t("jobs.delete")}>✕</button>
                   </td>
