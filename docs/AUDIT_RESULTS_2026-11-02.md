@@ -6,7 +6,7 @@ Status: **POTWIERDZONE_TESTEM** = widziane w wyniku skryptu na tej maszynie. Poz
 ## 1. System i GPU
 - Ubuntu 24.04.5 LTS, kernel 6.17.0-42-generic, systemowy `python3` 3.12.3. **POTWIERDZONE**.
 - GPU[0]: AMD Radeon AI PRO R9700, gfx1201, VRAM 34 208 743 424 B (≈31,9 GiB). **POTWIERDZONE** (rocm-smi, rocminfo, ComfyUI `system_stats`).
-- GPU[1]: iGPU Raphael (gfx1036), VRAM 64 MB. ComfyUI ma używać GPU 0. Jak to wymusić (np. `HIP_VISIBLE_DEVICES`) — **NIEZWERYFIKOWANE**.
+- GPU[1]: iGPU Raphael (gfx1036), VRAM 64 MB. Start wymusza `ROCR_VISIBLE_DEVICES=0` (POTWIERDZONE w skrypcie); że indeks 0 to R9700, wynika z `system_stats` (device 0).
 - ROCm: `/opt/rocm` istnieje, **brak** `/opt/rocm/.info/version`. dpkg: `amdrocm-core10.0-gfx1201 10.0.0-4`. Torch w ComfyUI: `2.14.0+rocm10.1.0`. **NIEZGODNOŚĆ** wersji userlandu (10.0) z buildem torcha (10.1) — **do wyjaśnienia** (`torch.version.hip` w venv ComfyUI).
 - Systemowy `torch` 2.14.1+cu130 (CUDA, nie ROCm) — **nie jest** środowiskiem ComfyUI; ignorować przy audycie.
 - ffmpeg/ffprobe 6.1.1 dostępne. **POTWIERDZONE**.
@@ -15,7 +15,8 @@ Status: **POTWIERDZONE_TESTEM** = widziane w wyniku skryptu na tej maszynie. Poz
 - Katalog: `/home/sututrang/ComfyUI` (repo git, HEAD `ba994879`, 2026-10-14, origin Comfy-Org). Venv: `/home/sututrang/ComfyUI/venv` (python 3.12). **POTWIERDZONE**.
 - Wersje (`system_stats`): ComfyUI 0.40.0, frontend 1.55.17, templates 0.11.82, comfy-kitchen 0.2.37. **POTWIERDZONE**.
 - Argumenty startowe: `main.py --enable-manager --enable-manager-legacy-ui --disable-smart-memory --use-ck-attention`. **POTWIERDZONE**. Uwaga: `--disable-smart-memory` wpływa na zwalnianie VRAM (ważne dla M6).
-- **Brak** `~/comfyui-local/scripts/start-comfy.sh` (ani w `~/ComfyUI/scripts/`). Wszystkie handoffy w `_PLAN/` podają tę ścieżkę. **NIEZGODNOŚĆ**: trzeba ustalić, jak naprawdę startujesz ComfyUI.
+- **Start ComfyUI (POTWIERDZONE, odczyt skryptu):** `~/comfyui-local/scripts/start-comfy.sh` ustawia `ROCR_VISIBLE_DEVICES=0`, wchodzi do `~/ComfyUI`, aktywuje `venv` i wykonuje `exec python main.py --enable-manager --enable-manager-legacy-ui --disable-smart-memory --use-ck-attention`. Brak `--port`/`--listen`, więc serwer działa na domyślnym `127.0.0.1:8188`. Ścieżka istnieje (wcześniejsze stwierdzenie o jej braku było błędem skryptu zbierającego, naprawionym). Skrypt `check-environment.sh` pokazuje wersje torch/ROCm/GPU (do uruchomienia przez użytkownika).
+- Uwaga: użytkownik nie startuje ComfyUI od zera; serwer był już uruchomiony. Komendy `queue` i `interrupt` z `CLAUDE_QUICKREF` są poprawne.
 - Serwer odpowiada na `127.0.0.1:8188`. **POTWIERDZONE**.
 - `object_info`: 1700 węzłów (plik `~/psychodelic_object_info_20261102_085434.json`, 3,6 MB).
 
@@ -51,6 +52,6 @@ Nazwa naszej wtyczki `H3Director` nie koliduje z widocznymi nazwami (`ComfyMiniM
 ## 7. Wnioski dla planu M0/M1
 1. Adapter H3 (M2) = wywołanie `gen_extender_refine.py` z tym samym env; test 1:1 **bez renderu**: uruchomić skrypt w harnessie, który przechwytuje POST `/prompt`, zapisuje graf i kończy proces. Porównać z plikiem referencyjnym wygenerowanym raz z obecnego skryptu.
 2. Naprawić VAE w grafach warsztatu (fp16) przed jakimkolwiek testem.
-3. Ustalić komendę startu ComfyUI (brak `start-comfy.sh`).
+3. ~~Ustalić komendę startu ComfyUI~~ — ustalone: `start-comfy.sh`.
 4. Sprawdzić `torch.version.hip` i wersję ROCm w venv ComfyUI.
 5. Sprawdzić kolizje patchy H3 (lista w sekcji 5).

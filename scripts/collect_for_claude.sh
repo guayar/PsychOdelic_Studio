@@ -48,6 +48,8 @@ for c in "${CANDS[@]}"; do
     echo "--- extra_model_paths.yaml:"; cat "$c/extra_model_paths.yaml" 2>/dev/null | sed -E 's/(token|key|password|secret)[^:]*:.*/\1: <maskowane>/I' || echo "brak"
     echo "--- scripts/:"; ls "$c/scripts" 2>/dev/null
     head_file "$c/scripts/start-comfy.sh" 80
+    head_file "$HOME/comfyui-local/scripts/start-comfy.sh" 80
+    head_file "$HOME/comfyui-local/scripts/check-environment.sh" 60
     for r in "$c" "$c"/custom_nodes/*/; do
       [ -d "$r/.git" ] && { echo "--- git: $r"; git -C "$r" log -1 --format='%H %ci %s' 2>/dev/null; git -C "$r" remote -v 2>/dev/null | head -1; }
     done
