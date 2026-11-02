@@ -7,7 +7,8 @@ Status: **POTWIERDZONE_TESTEM** = widziane w wyniku skryptu na tej maszynie. Poz
 - Ubuntu 24.04.5 LTS, kernel 6.17.0-42-generic, systemowy `python3` 3.12.3. **POTWIERDZONE**.
 - GPU[0]: AMD Radeon AI PRO R9700, gfx1201, VRAM 34 208 743 424 B (≈31,9 GiB). **POTWIERDZONE** (rocm-smi, rocminfo, ComfyUI `system_stats`).
 - GPU[1]: iGPU Raphael (gfx1036), VRAM 64 MB. Start wymusza `ROCR_VISIBLE_DEVICES=0` (POTWIERDZONE w skrypcie); że indeks 0 to R9700, wynika z `system_stats` (device 0).
-- ROCm: `/opt/rocm` istnieje, **brak** `/opt/rocm/.info/version`. dpkg: `amdrocm-core10.0-gfx1201 10.0.0-4`. Torch w ComfyUI: `2.14.0+rocm10.1.0`. **NIEZGODNOŚĆ** wersji userlandu (10.0) z buildem torcha (10.1) — **do wyjaśnienia** (`torch.version.hip` w venv ComfyUI).
+- ROCm (POTWIERDZONE, `check-environment.sh` w venv ComfyUI): `torch.version.hip` = **7.16.26385**; torch `2.14.0+rocm10.1.0` (tag w nazwie buildu nie oznacza wersji runtime'u). GPU widoczne w tym skrypcie: „AMD Radeon AI PRO R9700”, liczba GPU 2 (skrypt nie ustawia `ROCR_VISIBLE_DEVICES`, a start-comfy.sh tak; w trakcie startu ComfyUI widzi kartę 0). Triton 3.8.0.
+- `/opt/rocm` istnieje, bez `.info/version`. dpkg pokazuje pakiety `amdrocm-core10.0-gfx1201 10.0.0-4`. Którego runtime'u używa torch (7.16 z venv czy 10.0 z systemu), **NIEZWERYFIKOWANE**; do sprawdzenia przez `ldd` na bibliotekach torcha.
 - Systemowy `torch` 2.14.1+cu130 (CUDA, nie ROCm) — **nie jest** środowiskiem ComfyUI; ignorować przy audycie.
 - ffmpeg/ffprobe 6.1.1 dostępne. **POTWIERDZONE**.
 
@@ -53,5 +54,5 @@ Nazwa naszej wtyczki `H3Director` nie koliduje z widocznymi nazwami (`ComfyMiniM
 1. Adapter H3 (M2) = wywołanie `gen_extender_refine.py` z tym samym env; test 1:1 **bez renderu**: uruchomić skrypt w harnessie, który przechwytuje POST `/prompt`, zapisuje graf i kończy proces. Porównać z plikiem referencyjnym wygenerowanym raz z obecnego skryptu.
 2. Naprawić VAE w grafach warsztatu (fp16) przed jakimkolwiek testem.
 3. ~~Ustalić komendę startu ComfyUI~~ — ustalone: `start-comfy.sh`.
-4. Sprawdzić `torch.version.hip` i wersję ROCm w venv ComfyUI.
+4. ~~Sprawdzić `torch.version.hip`~~ — 7.16.26385. Pozostaje: ustalić, z której biblioteki HIP korzysta torch (`ldd`).
 5. Sprawdzić kolizje patchy H3 (lista w sekcji 5).
