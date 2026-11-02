@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..adapters import h3 as h3a
@@ -18,6 +19,8 @@ from ..orchestrator.gpu import decide_render, read_vram
 from ..director.llm import NullRuntime, OllamaRuntime
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
+
+MEDIA_SUFFIXES = {".mp4", ".mov", ".webm", ".wav", ".mp3", ".png", ".jpg", ".jpeg"}
 from ..fsio import atomic_write_text
 
 
@@ -253,6 +256,26 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
             return {"clips": [{"clip_id": r["clip_id"], "source_path": r["source_path"],
                                "source_in": r["source_in_frame"], "source_out": r["source_out_frame"],
                                "timeline_start": r["timeline_start_frame"]} for r in rows]}
+
+    @app.get("/api/projects/{pid}/media/check")
+    def project_media_check(pid: str, path: str):
+        proj = _project_or_404(pid)
+        try:
+            target = resolve_within(proj["root_path"], path)
+        except UnsafePath:
+            return {"exists": False}
+        return {"exists": target.is_file() and target.suffix.lower() in MEDIA_SUFFIXES}
+
+    @app.get("/api/projects/{pid}/media")
+    def project_media(pid: str, path: str):
+        proj = _project_or_404(pid)
+        try:
+            target = resolve_within(proj["root_path"], path)
+        except UnsafePath as exc:
+            raise HTTPException(422, str(exc))
+        if not target.is_file() or target.suffix.lower() not in MEDIA_SUFFIXES:
+            raise HTTPException(404, "brak pliku")
+        return FileResponse(target)
 
     @app.put("/api/projects/{pid}/timeline")
     def timeline_put(pid: str, body: TimelineIn):

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Clip, type Project } from "../api";
 import { useI18n } from "../i18n";
+import { TimelinePreview } from "./TimelinePreview";
 
 type Row = { clip_id: string; source_path: string; source_in: string; source_out: string; timeline_start: string };
 const toRow = (c: Clip): Row => ({ clip_id: c.clip_id, source_path: c.source_path, source_in: String(c.source_in),
@@ -54,6 +55,8 @@ export function TimelineTab({ project }: { project: Project }) {
   }, [parsed]);
   const lanes = Math.max(1, ...drawn.map((r) => r.lane + 1));
   const total = Math.max(0, ...parsed.map((r) => r.a + (r.outF - r.inF)));
+  const previewClips = useMemo(() => parsed.filter((r) => r.outF > r.inF && r.source_path.trim())
+    .map((r) => ({ clip_id: r.clip_id, source_path: r.source_path, inF: r.inF, outF: r.outF, start: r.a })), [parsed]);
 
   const upd = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   const addRow = () => setRows((rs) => [...rs, {
@@ -100,6 +103,8 @@ export function TimelineTab({ project }: { project: Project }) {
           <span className="hint">{localErrors.length ? t("tl.issues", { n: localErrors.length }) : t("tl.ok")}</span>
         </div>
       </div>
+
+      <TimelinePreview projectId={project.id} clips={previewClips} total={total} />
 
       <div className="card" style={{ padding: 0 }}>
         <table>

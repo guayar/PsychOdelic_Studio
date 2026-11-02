@@ -24,6 +24,7 @@ export function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
 
   const loadProjects = useCallback(async () => {
     const list = await api.get<Project[]>("/api/projects-summary");
@@ -42,19 +43,26 @@ export function App() {
     return () => clearInterval(timer);
   }, [loadProjects, loadStatus]);
 
-  async function deleteSelected() {
-    const proj = projects.find((p) => p.id === selected);
-    if (!proj) return;
-    if (!window.confirm(t("projects.deleteConfirm", { name: proj.name }))) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setPendingDelete(null);
     try {
-      await api.del(`/api/projects/${proj.id}`);
-      setSelected(null);
+      await api.del(`/api/projects/${id}`);
+      if (selected === id) setSelected(null);
       await loadProjects();
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
   }
+
+  useEffect(() => {
+    if (!pendingDelete) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPendingDelete(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingDelete]);
 
   async function createProject() {
     const name = newName.trim();
@@ -90,12 +98,28 @@ export function App() {
           <span className="hint">{t("projects.title")}</span>
           {projects.length === 0 && <div className="hint">{t("projects.empty")}</div>}
           {projects.map((p) => (
-            <button key={p.id} className={`proj ${p.id === selected ? "sel" : ""}`} onClick={() => setSelected(p.id)}>
-              <div>{p.name}</div>
-              <div className="meta">{t("projects.meta", { jobs: p.jobs ?? 0, variants: p.variants ?? 0 })}</div>
-            </button>
+            <div key={p.id} className="projrow">
+              <button className={`proj ${p.id === selected ? "sel" : ""}`} style={{ flex: 1, minWidth: 0 }} onClick={() => setSelected(p.id)}>
+                <div>{p.name}</div>
+                <div className="meta">{t("projects.meta", { jobs: p.jobs ?? 0, variants: p.variants ?? 0 })}</div>
+              </button>
+              <button className="ghost danger projdel" title={t("projects.delete")} aria-label={t("projects.delete")}
+                onClick={() => setPendingDelete(p)}>✕</button>
+            </div>
           ))}
         </div>
+        {pendingDelete && (
+          <div className="modal-backdrop" onClick={() => setPendingDelete(null)}>
+            <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 8px" }}>{t("projects.deleteTitle")}</h3>
+              <p className="hint" style={{ margin: "0 0 16px" }}>{t("projects.deleteConfirm", { name: pendingDelete.name })}</p>
+              <div className="row" style={{ justifyContent: "flex-end" }}>
+                <button onClick={() => setPendingDelete(null)}>{t("projects.deleteCancel")}</button>
+                <button className="danger" onClick={confirmDelete}>{t("projects.deleteOk")}</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="stack" style={{ marginTop: "auto" }}>
           <label>
             <span>{t("projects.new")}</span>
@@ -103,7 +127,6 @@ export function App() {
               onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createProject()} />
           </label>
           <button className="primary" onClick={createProject} disabled={!newName.trim()}>{t("projects.create")}</button>
-          <button className="ghost danger" onClick={deleteSelected} disabled={!selected}>{t("projects.delete")}</button>
         </div>
       </aside>
 

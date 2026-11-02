@@ -138,3 +138,27 @@ def test_project_delete_allows_same_name_again(client):
     pid = make_project(client)
     client.delete(f"/api/projects/{pid}")
     assert make_project(client) != pid
+
+
+def test_project_media_serves_inside_project_only(client, app):
+    pid = make_project(client)
+    root = Path(client.get(f"/api/projects/{pid}").json()["root_path"])
+    (root / "renders").mkdir(exist_ok=True)
+    (root / "renders" / "a.mp4").write_bytes(b"0123456789")
+    (root / "renders" / "note.txt").write_text("x", encoding="utf-8")
+    ok = client.get(f"/api/projects/{pid}/media", params={"path": "renders/a.mp4"})
+    assert ok.status_code == 200 and ok.content == b"0123456789"
+    assert client.get(f"/api/projects/{pid}/media", params={"path": "../x.mp4"}).status_code == 422
+    assert client.get(f"/api/projects/{pid}/media", params={"path": "renders/none.mp4"}).status_code == 404
+    assert client.get(f"/api/projects/{pid}/media", params={"path": "renders/note.txt"}).status_code == 404
+    assert client.get("/api/projects/nope/media", params={"path": "renders/a.mp4"}).status_code == 404
+
+
+def test_project_media_check_reports_existence(client, app):
+    pid = make_project(client)
+    root = Path(client.get(f"/api/projects/{pid}").json()["root_path"])
+    (root / "renders").mkdir(exist_ok=True)
+    (root / "renders" / "a.mp4").write_bytes(b"x")
+    assert client.get(f"/api/projects/{pid}/media/check", params={"path": "renders/a.mp4"}).json() == {"exists": True}
+    assert client.get(f"/api/projects/{pid}/media/check", params={"path": "renders/b.mp4"}).json() == {"exists": False}
+    assert client.get(f"/api/projects/{pid}/media/check", params={"path": "../x.mp4"}).json() == {"exists": False}
