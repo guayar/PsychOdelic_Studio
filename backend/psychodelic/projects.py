@@ -9,10 +9,17 @@ from .fsio import atomic_write_json
 MAX_NAME = 120
 
 
+class DuplicateProject(ValueError):
+    pass
+
+
 def create_project(conn, data_dir, name):
     name = (name or "").strip()
     if not name or len(name) > MAX_NAME or "\x00" in name:
         raise ValueError("nazwa projektu: 1-120 znakow, bez znakow sterujacych")
+    dup = conn.execute("SELECT id FROM projects WHERE name = ?", (name,)).fetchone()
+    if dup is not None:
+        raise DuplicateProject(name)
     project_id = str(uuid.uuid4())
     root = Path(data_dir) / "projects" / project_id
     root.mkdir(parents=True, exist_ok=False)

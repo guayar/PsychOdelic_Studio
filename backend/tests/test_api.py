@@ -44,3 +44,9 @@ def test_doctor_reports_comfy_down_honestly(client):
     assert "nie dowod braku modeli" in next(i for i in report["items"] if i["name"] == "ComfyUI")["detail"]
     assert statuses["data_dir zapisywalny"] == CONFIRMED
     assert set(statuses.values()) <= {CONFIRMED, UNVERIFIED, UNAVAILABLE}
+
+
+def test_duplicate_project_name_rejected(client):
+    assert client.post("/api/projects", json={"name": "Dup"}).status_code == 201
+    r = client.post("/api/projects", json={"name": "Dup"})
+    assert r.status_code == 409 and "już istnieje" in r.json()["detail"]

@@ -14,7 +14,7 @@ from . import __version__
 from .db import connect, migrate
 from .doctor import run_doctor
 from .jobs import JobStore
-from .projects import create_project, get_project, list_projects
+from .projects import DuplicateProject, create_project, get_project, list_projects
 
 DEFAULT_DATA = Path(os.environ.get("PSYCHODELIC_DATA", Path.home() / ".local/share/psychodelic-studio"))
 DEFAULT_COMFY = os.environ.get("PSYCHODELIC_COMFY_URL", "http://127.0.0.1:8188")
@@ -62,6 +62,8 @@ def create_app(data_dir=None, comfy_url=None):
         with lock:
             try:
                 return create_project(conn, data_dir, body.name)
+            except DuplicateProject:
+                raise HTTPException(status_code=409, detail=f"projekt o nazwie „{body.name}” już istnieje")
             except ValueError as exc:
                 raise HTTPException(status_code=422, detail=str(exc))
 
@@ -88,4 +90,12 @@ def create_app(data_dir=None, comfy_url=None):
             raise HTTPException(status_code=404, detail="brak zadania")
         return job
 
+    from .api.routes import register
+    register(app, conn, lock, data_dir)
+
+    # Zbudowany frontend (frontend/dist) serwowany z tego samego originu. Trasy /api maja pierwszenstwo.
+    ui_dir = Path(os.environ.get("PSYCHODELIC_UI_DIR", Path(__file__).resolve().parents[2] / "frontend" / "dist"))
+    if ui_dir.is_dir() and (ui_dir / "index.html").is_file():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/", StaticFiles(directory=str(ui_dir), html=True), name="ui")
     return app

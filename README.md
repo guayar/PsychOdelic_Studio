@@ -17,7 +17,15 @@ PSYCHODELIC_DATA=~/psy-data python -m psychodelic
 ```
 Endpointy: `GET /api/health`, `GET /api/doctor`, `GET/POST /api/projects`, `GET /api/projects/{id}`, `POST /api/jobs`, `GET /api/jobs/{id}`.
 
+## Uruchomienie UI
+```bash
+(cd frontend && npm install && npm run build)
+PSYCHODELIC_DATA=~/psy-data python -m psychodelic    # http://127.0.0.1:8765
+```
+Opis ekranów: [docs/UI_GUIDE.md](docs/UI_GUIDE.md).
+
 ## Dokumentacja
 - `docs/AUDIT.md`, `docs/COMPATIBILITY.md`, `docs/BASELINE.md` — audyt (M0)
-- `docs/STATUS.md` — co działa i co nie
+- `docs/STATUS.md` — co działa i co nie (z kolumną sposobu sprawdzenia)
+- `docs/UI_GUIDE.md` — jak korzystać z ekranów
 - `scripts/collect_local_audit.sh` — audyt tylko do odczytu, uruchamiasz u siebie
