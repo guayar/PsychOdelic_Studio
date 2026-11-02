@@ -8,3 +8,5 @@ frontend/dist/
 audit_out/
 *.db
 frontend/*.tsbuildinfo
+install_report.json
+.venv/

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PsychOdelic Studio
+Comment=Lokalne studio do teledysków (H3 / LTX)
+Exec=@STUDIO_DIR@/start.sh
+Icon=@STUDIO_DIR@/desktop/psychodelic-studio.svg
+Terminal=false
+Categories=AudioVideo;Video;
+StartupNotify=true

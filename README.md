@@ -17,6 +17,9 @@ PSYCHODELIC_DATA=~/psy-data python -m psychodelic
 ```
 Endpointy: `GET /api/health`, `GET /api/doctor`, `GET/POST /api/projects`, `GET /api/projects/{id}`, `POST /api/jobs`, `GET /api/jobs/{id}`.
 
+## Instalacja (ComfyUI + studio)
+Zobacz [docs/INSTALL.md](docs/INSTALL.md): `./install.sh --comfy ~/ComfyUI`. Wagi i nody nie są instalowane automatycznie; raport mówi, co dociągnąć.
+
 ## Uruchomienie UI
 ```bash
 (cd frontend && npm install && npm run build)
