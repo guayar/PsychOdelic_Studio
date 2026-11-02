@@ -20,6 +20,6 @@ Każda różnica oznacza zmianę produkcyjnych plików: zatrzymaj się i wyjaśn
 
 ## Stan
 
-- Baseline jeszcze nie został wykonany (brak dostępu do Twojego dysku z tej sesji).
+- **Baseline wykonany (2026-11-02):** `~/oug_baseline_20261102.sha256`, 55 plików `_docs` + `_PLAN`, weryfikacja: 55 OK.
 - Plików `_docs/*` i `_PLAN/*` nie widziałem.
 - Wykonanie renderu w ramach baseline'u nie jest potrzebne ani zalecane.

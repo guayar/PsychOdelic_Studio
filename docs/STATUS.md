@@ -3,7 +3,7 @@
 ## M0: audyt
 - **Częściowo.** Brak dostępu do lokalnego Ubuntu i ComfyUI z tej sesji. Szczegóły: `docs/AUDIT.md`, `docs/COMPATIBILITY.md`.
 - Gotowy skrypt tylko do odczytu: `scripts/collect_local_audit.sh` (uruchom u siebie).
-- Baseline OUG: **nie wykonany** (`docs/BASELINE.md`).
+- Baseline OUG: **wykonany** (55/55 OK). Wyniki lokalnego audytu: `docs/AUDIT_RESULTS_2026-11-02.md`.
 
 ## M1: fundament
 | Element | Stan |
