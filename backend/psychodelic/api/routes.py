@@ -13,7 +13,7 @@ from ..adapters import ltx as ltxa
 from ..db import utc_now
 from ..director.planner import plan_shots
 from ..director.tools import ToolRegistry, Tool, READ
-from ..jobs import JobStore
+from ..jobs import JobActive, JobStore
 from ..media.timeline import Clip, TimelineError, export_csv, export_json, validate
 from ..orchestrator.gpu import decide_render, read_vram
 from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list, unload as llm_unload
@@ -248,6 +248,23 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
             rows = conn.execute("SELECT id, kind, state, error, created_at, updated_at FROM jobs"
                                 " WHERE project_id = ? ORDER BY created_at DESC", (pid,)).fetchall()
             return [dict(r) for r in rows]
+
+    @app.delete("/api/jobs/{job_id}")
+    def job_delete(job_id: str):
+        with lock:
+            try:
+                pid = jobs.delete(job_id)
+            except JobActive as exc:
+                raise HTTPException(409, f"zadanie jest w toku ({exc}); nie mozna go usunac")
+        if pid is None:
+            raise HTTPException(404, "brak zadania")
+        return {"deleted": job_id}
+
+    @app.post("/api/projects/{pid}/jobs/clear")
+    def jobs_clear(pid: str):
+        with lock:
+            _project_or_404(pid)
+            return jobs.clear(pid)
 
     @app.get("/api/jobs/{job_id}/events")
     def job_events(job_id: str):
