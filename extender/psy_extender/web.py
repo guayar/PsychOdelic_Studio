@@ -132,10 +132,16 @@ def create_app(chain_path, oug_dir="", comfy_output=None):
             plan = build(tree, sid, prefix=prefix, oug_dir=oug_dir or None)
         except (TreeError, AssertionError) as exc:
             _err(exc)
-        if not body.execute:
-            return {"executed": False, "plan": plan}
         if not oug_dir:
-            raise HTTPException(422, "brak katalogu OUG (uruchom z --oug)")
+            if body.execute:
+                raise HTTPException(422, "brak katalogu OUG (uruchom z --oug)")
+            return {"executed": False, "plan": plan}
+        # prompt sceny trafia do pliku, ktorego oczekuje produkcyjny skrypt (tylko plik studia, nadpisywany)
+        prompt_file = Path(oug_dir) / "_docs" / "studio_prompts" / f"{sid}.txt"
+        prompt_file.parent.mkdir(parents=True, exist_ok=True)
+        prompt_file.write_text(tree.scene(sid).get("prompt", ""), encoding="utf-8")
+        if not body.execute:
+            return {"executed": False, "plan": plan, "prompt_file": str(prompt_file)}
         proc = subprocess.run(plan["argv"], cwd=oug_dir, env={**os.environ, **plan["env"]},
                               capture_output=True, text=True, check=False)
         log = (proc.stdout + "\n" + proc.stderr)[-4000:]
