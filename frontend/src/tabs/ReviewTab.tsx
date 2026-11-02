@@ -63,6 +63,18 @@ export function ReviewTab({ project }: { project: Project }) {
     } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
   }
 
+  async function removeVariant(id: string) {
+    if (!window.confirm(t("review.removeConfirm"))) return;
+    try { await api.del(`/api/variants/${id}`); load(); }
+    catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
+  }
+
+  async function clearRejected() {
+    if (!window.confirm(t("review.clearConfirm"))) return;
+    try { await api.post(`/api/projects/${project.id}/variants/clear-rejected`); load(); }
+    catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
+  }
+
   async function review(v: Variant, decision: "accepted" | "rejected") {
     try {
       await api.post(`/api/variants/${v.id}/review`, { decision, note: notes[v.id] ?? "" });
@@ -132,9 +144,15 @@ export function ReviewTab({ project }: { project: Project }) {
 
       {done.length > 0 && (
         <div>
-          <h3 style={{ marginBottom: 10 }}>{t("review.done", { n: done.length })}</h3>
+          <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>{t("review.done", { n: done.length })}</h3>
+            {done.some((v) => v.review_status === "rejected") && (
+              <button className="ghost danger" onClick={clearRejected}>{t("review.clearRejected")}</button>
+            )}
+          </div>
           {done.map((v) => (
             <div className="review-card" key={v.id} style={{ opacity: v.review_status === "rejected" ? 0.7 : 1 }}>
+              {v.review_status === "rejected" && <div className="row" style={{ justifyContent: "flex-end" }}><button className="ghost danger" onClick={() => removeVariant(v.id)}>✕ {t("review.remove")}</button></div>}
               <div>
                 <div className="row">
                   <span className={`badge ${v.review_status}`}>{v.review_status === "accepted" ? t("review.statusAccepted") : t("review.statusRejected")}</span>

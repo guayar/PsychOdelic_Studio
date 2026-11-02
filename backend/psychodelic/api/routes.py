@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from ..adapters import h3 as h3a
 from ..adapters import ltx as ltxa
-from ..db import utc_now
+from ..db import transaction, utc_now
 from ..director.planner import plan_shots
 from ..director.tools import ToolRegistry, Tool, READ
 from ..jobs import JobActive, JobStore
@@ -304,6 +304,38 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
                 " FROM render_variants v LEFT JOIN artifacts a ON a.variant_id = v.id"
                 " WHERE v.project_id = ? ORDER BY v.created_at", (pid,)).fetchall()
             return [dict(r) for r in rows]
+
+    def _delete_rejected(vid):
+        row = conn.execute("SELECT review_status, project_id FROM render_variants WHERE id = ?", (vid,)).fetchone()
+        if row is None:
+            return None
+        if row["review_status"] != "rejected":
+            raise HTTPException(409, "z listy mozna usunac tylko odrzucone wpisy (pliki na dysku zostaja)")
+        with transaction(conn):
+            conn.execute("DELETE FROM artifacts WHERE variant_id = ?", (vid,))
+            conn.execute("DELETE FROM reviews WHERE variant_id = ?", (vid,))
+            conn.execute("UPDATE timeline_items SET variant_id = NULL WHERE variant_id = ?", (vid,))
+            conn.execute("DELETE FROM render_variants WHERE id = ?", (vid,))
+            conn.execute("INSERT INTO audit_events (project_id, job_id, event, detail_json, created_at)"
+                         " VALUES (?, NULL, 'variant_removed_from_list', '{}', ?)", (row["project_id"], utc_now()))
+        return row["project_id"]
+
+    @app.delete("/api/variants/{vid}")
+    def variant_delete(vid: str):
+        with lock:
+            if _delete_rejected(vid) is None:
+                raise HTTPException(404, "brak wariantu")
+        return {"deleted": vid}
+
+    @app.post("/api/projects/{pid}/variants/clear-rejected")
+    def variants_clear_rejected(pid: str):
+        with lock:
+            _project_or_404(pid)
+            ids = [r["id"] for r in conn.execute(
+                "SELECT id FROM render_variants WHERE project_id = ? AND review_status = 'rejected'", (pid,)).fetchall()]
+            for vid in ids:
+                _delete_rejected(vid)
+        return {"deleted": len(ids)}
 
     @app.post("/api/variants/{vid}/review")
     def variant_review(vid: str, body: ReviewIn):
