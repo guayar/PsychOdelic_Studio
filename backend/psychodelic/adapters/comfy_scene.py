@@ -54,12 +54,12 @@ def build_scene_graph(prompt, seed, seconds, width, height, refs, prefix):
     g.pop("5", None)  # stale LoadImage z szablonu; referencje wstawiamy od nowa
     g.pop("6", None)
     node = g["7"]["inputs"]
-    for k in [k for k in node if re.fullmatch(r"ref_image_\d+", k)]:
+    for k in [k for k in node if re.fullmatch(r"(ref_images\.)?ref_image_\d+", k)]:
         del node[k]
     for k, name in enumerate(refs):
         nid = str(100 + k)
         g[nid] = {"class_type": "LoadImage", "inputs": {"image": name}}
-        node[f"ref_image_{k}"] = [nid, 0]
+        node[f"ref_images.ref_image_{k}"] = [nid, 0]  # autogrow: ref_images -> ref_image_N (format API ComfyUI)
     node["prompt"] = prompt
     node["width"] = int(width)
     node["height"] = int(height)
