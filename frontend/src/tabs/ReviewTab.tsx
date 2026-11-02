@@ -30,9 +30,9 @@ function MediaPreview({ projectId, path, autoPlay }: { projectId: string; path: 
         : <audio {...mediaProps} style={{ width: "100%", marginTop: 8 }} />}
       <div className="row" style={{ marginTop: 8, gap: 6 }}>
         <button className="ghost" onClick={stop} title={t("player.stop")}>⏹ {t("player.stop")}</button>
-        <button className="ghost" onClick={() => jump(-5)} title={t("player.back5")}>⏪ −5 s</button>
+        <button className="ghost" onClick={() => jump(-1)} title={t("player.back5")}>⏪ −1 s</button>
         <button className="primary" onClick={toggle} title={t("player.toggle")}>⏯</button>
-        <button className="ghost" onClick={() => jump(5)} title={t("player.fwd5")}>⏩ +5 s</button>
+        <button className="ghost" onClick={() => jump(1)} title={t("player.fwd5")}>⏩ +1 s</button>
         {isVideo && <>
           <button className="ghost" onClick={() => jump(-1 / 24)} title="-1 klatka (1/24 s)">◀ −1 kl.</button>
           <button className="ghost" onClick={() => jump(1 / 24)} title="+1 klatka (1/24 s)">+1 kl. ▶</button>
