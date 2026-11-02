@@ -45,6 +45,8 @@ class H3In(BaseModel):
     ctrl_frames: int | None = None
     ctrl_strength: float | None = None
     refine: bool = False
+    ref_videos: list[str] = Field(default_factory=list, max_length=3)
+    ref_audios: list[str] = Field(default_factory=list, max_length=3)
 
 
 class LtxIn(BaseModel):

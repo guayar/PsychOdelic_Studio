@@ -20,6 +20,9 @@ from ..security import UnsafePath, resolve_within, safe_name
 
 SCRIPT_REL = "_docs/gen_extender_refine.py"
 MAX_IMAGE_REFS = 9
+MAX_VIDEO_REFS = 3          # wg kodu tritant (MAX_VIDEO_REFS), klatki <= 362
+MAX_AUDIO_REFS = 3          # wg kodu tritant (MAX_STANDALONE_AUDIO_REFS), kazdy 2-15 s, razem <= 15 s
+MAX_MIXED_REFS = 12         # wg kodu tritant (MAX_MIXED_REF_ITEMS)
 MAX_DURATION_S = 14.4
 ALLOWED_ENV = {"REFS", "CONT", "FULLRES", "DURS", "RUNMODE", "VALIDATED", "CTRL", "CTRL_FRAMES", "CTRL_STRENGTH"}
 PREFIX_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_\-/]{0,63}$")
@@ -45,6 +48,8 @@ class ExtenderSpec:
     ctrl_frames: int | None = None
     ctrl_strength: float | None = None
     refine: bool = False
+    ref_videos: list = field(default_factory=list)  # nazwy plikow w ComfyUI input
+    ref_audios: list = field(default_factory=list)  # nazwy plikow w ComfyUI input
 
 
 def _grid_ok(seconds):
@@ -66,6 +71,20 @@ def build_command(spec: ExtenderSpec):
         raise H3ValidationError("brak plikow promptow")
     if len(spec.refs) > MAX_IMAGE_REFS:
         raise H3ValidationError(f"za duzo referencji: {len(spec.refs)} > {MAX_IMAGE_REFS}")
+    if len(spec.ref_videos) > MAX_VIDEO_REFS:
+        raise H3ValidationError(f"za duzo referencji wideo: {len(spec.ref_videos)} > {MAX_VIDEO_REFS}")
+    if len(spec.ref_audios) > MAX_AUDIO_REFS:
+        raise H3ValidationError(f"za duzo referencji audio: {len(spec.ref_audios)} > {MAX_AUDIO_REFS}")
+    mixed = len(spec.refs) + len(spec.ref_videos) + len(spec.ref_audios)
+    if mixed > MAX_MIXED_REFS:
+        raise H3ValidationError(f"H3 przyjmuje najwyzej {MAX_MIXED_REFS} referencji lacznie, podano {mixed}")
+    if spec.ref_audios and not (spec.refs or spec.ref_videos):
+        raise H3ValidationError("referencja audio wymaga co najmniej jednego obrazu lub wideo")
+    for name in list(spec.ref_videos) + list(spec.ref_audios):
+        try:
+            safe_name(name)
+        except UnsafePath as exc:
+            raise H3ValidationError(str(exc))
     if spec.runmode not in ("full_batch", "clip_by_clip"):
         raise H3ValidationError("runmode: full_batch albo clip_by_clip")
     if spec.durs and len(spec.durs) != len(spec.prompt_files):
@@ -115,7 +134,11 @@ def build_command(spec: ExtenderSpec):
         env["CTRL_STRENGTH"] = str(float(spec.ctrl_strength))
     assert set(env) <= ALLOWED_ENV, "nieobslugiwana zmienna srodowiskowa"
 
+    media = {"videos": list(spec.ref_videos), "audios": list(spec.ref_audios)}
+    if media["videos"] or media["audios"]:
+        warnings.append("referencje wideo/audio sa zapisane w zadaniu, ale NIE sa jeszcze podlaczone do wykonania "
+                        "(produkcyjny skrypt nie ma tego wejscia w znanym interfejsie)")
     argv = ["python3", "-u", SCRIPT_REL, "1" if spec.refine else "0", spec.prefix, str(int(spec.seed))] + list(prompt_paths)
     return {"cwd": str(root), "argv": argv, "env": env, "script": SCRIPT_REL,
             "expected_output": f"~/ComfyUI/output/{spec.prefix.replace('/', '_')}.mp4",
-            "warnings": warnings, "errors": errors}
+            "media_refs": media, "warnings": warnings, "errors": errors}

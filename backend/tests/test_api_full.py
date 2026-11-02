@@ -105,3 +105,16 @@ def test_projects_summary_counts(client):
     pid = make_project(client, "Liczniki")
     s = [p for p in client.get("/api/projects-summary").json() if p["id"] == pid][0]
     assert s["jobs"] == 0 and s["variants"] == 0
+
+
+def test_h3_media_refs_api_limit(client, app):
+    pid = make_project(client)
+    rel = make_prompt(client, pid, app)
+    r = client.post(f"/api/projects/{pid}/h3/prepare", json={
+        "prefix": "shots/x1", "seed": 1, "prompt_files": [rel], "ref_videos": ["a.mp4"] * 4})
+    assert r.status_code == 422
+    ok = client.post(f"/api/projects/{pid}/h3/prepare", json={
+        "prefix": "shots/x1", "seed": 1, "prompt_files": [rel], "refs": ["r.png"],
+        "ref_videos": ["a.mp4"], "ref_audios": ["a.wav"]})
+    assert ok.status_code == 201
+    assert ok.json()["command"]["media_refs"] == {"videos": ["a.mp4"], "audios": ["a.wav"]}

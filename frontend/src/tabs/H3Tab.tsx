@@ -4,6 +4,38 @@ import { useI18n } from "../i18n";
 import { CommandView } from "./CommandView";
 
 const MAX_REFS = 9;
+const MAX_MEDIA = 3;
+
+function MediaList({ label, items, setItems, max, placeholder, t }: {
+  label: string; items: string[]; setItems: (f: (xs: string[]) => string[]) => void; max: number; placeholder: string; t: (k: any, p?: any) => string;
+}) {
+  const [v, setV] = useState("");
+  const full = items.length >= max;
+  function add() {
+    const x = v.trim();
+    if (!x || full) return;
+    setItems((xs) => [...xs, x]); setV("");
+  }
+  return (
+    <div>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <strong>{label}</strong>
+        <span className={`counter ${full ? "full" : ""}`}>{items.length} / {max}</span>
+      </div>
+      <div className="row" style={{ marginTop: 6 }}>
+        <input style={{ flex: 1, minWidth: 220 }} value={v} disabled={full} placeholder={full ? t("h3.mediaLimit", { max }) : placeholder}
+          onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+        <button onClick={add} disabled={full || !v.trim()}>{t("h3.addMedia")}</button>
+      </div>
+      {items.map((r, i) => (
+        <div className="refitem" key={`${r}-${i}`}>
+          <span><span className="idx">{i + 1}</span><code>{r}</code></span>
+          <button className="ghost danger" onClick={() => setItems((xs) => xs.filter((_, k) => k !== i))}>{t("common.remove")}</button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function H3Tab({ project }: { project: Project }) {
   const { t } = useI18n();
@@ -15,6 +47,8 @@ export function H3Tab({ project }: { project: Project }) {
   const [seed, setSeed] = useState("1234");
   const [refs, setRefs] = useState<string[]>([]);
   const [refInput, setRefInput] = useState("");
+  const [refVideos, setRefVideos] = useState<string[]>([]);
+  const [refAudios, setRefAudios] = useState<string[]>([]);
   const [cont, setCont] = useState("");
   const [durs, setDurs] = useState("7.5");
   const [runmode, setRunmode] = useState("full_batch");
@@ -69,6 +103,7 @@ export function H3Tab({ project }: { project: Project }) {
       if (dirty) await savePrompt();
       const body = {
         prefix, seed: Number(seed), prompt_files: [promptRel], refs,
+        ref_videos: refVideos, ref_audios: refAudios,
         cont: cont.trim() || null,
         durs: durs.split(",").map((x) => x.trim()).filter(Boolean).map(Number),
         runmode, validated: Number(validated), fullres, refine,
@@ -147,6 +182,7 @@ export function H3Tab({ project }: { project: Project }) {
           <span className={`counter ${refsFull ? "full" : ""}`}>{refs.length} / {MAX_REFS}</span>
         </div>
         <p className="hint" style={{ margin: "6px 0 12px" }}>{t("h3.refsHint")}</p>
+
         <div className="row">
           <input style={{ flex: 1, minWidth: 260 }} value={refInput} disabled={refsFull}
             placeholder={refsFull ? t("h3.refsFull") : t("h3.refsPlaceholder")}
@@ -161,6 +197,13 @@ export function H3Tab({ project }: { project: Project }) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="card">
+        <p className="hint" style={{ margin: "0 0 12px" }}>{t("h3.mediaHint")}</p>
+        <MediaList label={t("h3.refVideos")} items={refVideos} setItems={setRefVideos} max={MAX_MEDIA} placeholder={t("h3.mediaPlaceholder")} t={t} />
+        <div style={{ height: 14 }} />
+        <MediaList label={t("h3.refAudios")} items={refAudios} setItems={setRefAudios} max={MAX_MEDIA} placeholder={t("h3.audioPlaceholder")} t={t} />
       </div>
 
       <details className="card">

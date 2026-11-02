@@ -83,3 +83,31 @@ def test_ltx_prompt_outside_rejected(root):
     with pytest.raises(h3.H3ValidationError):
         ltx.build_command(ltx.LtxSpec(project_root=str(root), tail="a.mp4", tail_frames=24, audio="a.wav",
                                       audio_frames=10, prompt_file="../x", seed=1, prefix="shots/x"))
+
+
+def test_media_refs_accepted_and_flagged_not_wired(root):
+    cmd = h3.build_command(spec(root, refs=["ref_a.png"], ref_videos=["ref_video_01.mp4"],
+                                ref_audios=["ref_audio_01.wav"]))
+    assert cmd["media_refs"] == {"videos": ["ref_video_01.mp4"], "audios": ["ref_audio_01.wav"]}
+    assert any("NIE sa jeszcze podlaczone" in w for w in cmd["warnings"])
+    assert "ref_video_01.mp4" not in str(cmd["env"])  # nie trafia do zmiennych produkcyjnego skryptu
+
+
+def test_no_media_refs_no_warning(root):
+    cmd = h3.build_command(spec(root, refs=["ref_a.png"]))
+    assert cmd["media_refs"] == {"videos": [], "audios": []}
+    assert not any("NIE sa jeszcze" in w for w in cmd["warnings"])
+
+
+@pytest.mark.parametrize("kw", [
+    {"ref_videos": ["a.mp4", "b.mp4", "c.mp4", "d.mp4"]},
+    {"ref_audios": ["a.wav", "b.wav", "c.wav", "d.wav"]},
+    {"ref_audios": ["a.wav"]},                                   # audio bez kotwicy obrazu/wideo
+    {"ref_videos": ["../x.mp4"]},                                # sciezka poza ComfyUI input
+    {"refs": [f"r{i}.png" for i in range(9)], "ref_videos": ["a.mp4", "b.mp4", "c.mp4"],
+     "ref_audios": ["a.wav", "b.wav", "c.wav"]},                 # 9+3+3 = 15 > 12 lacznie
+])
+def test_media_refs_limits_rejected(root, kw):
+    with pytest.raises(h3.H3ValidationError):
+        h3.build_command(spec(root, **kw))
+
