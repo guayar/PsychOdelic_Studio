@@ -522,6 +522,14 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
     def project_import(pid: str, body: ImportIn):
         with lock:
             proj = _project_or_404(pid)
+        root = Path(proj["root_path"]).resolve()
+        src = Path(body.path).expanduser()
+        try:
+            rel = src.resolve().relative_to(root)
+            if src.resolve().is_file():
+                return {"name": rel.as_posix()}  # plik juz jest w projekcie: bez kopii
+        except ValueError:
+            pass
         try:
             name = copy_into(body.path, Path(proj["root_path"]) / "renders")
         except ValueError as exc:

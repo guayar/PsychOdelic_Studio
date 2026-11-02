@@ -48,3 +48,14 @@ def test_only_rejected_entries_can_be_removed_and_file_stays(tmp_path):
     c.post(f"/api/variants/{vid2}/review", json={"decision": "accepted", "note": ""})
     assert c.delete(f"/api/variants/{vid2}").status_code == 409
     assert c.post(f"/api/projects/{pid}/variants/clear-rejected").json() == {"deleted": 0}
+
+
+def test_import_of_file_already_in_project_gives_relative_path(tmp_path):
+    c = TestClient(create_app(data_dir=tmp_path / "d", comfy_url="http://127.0.0.1:9"))
+    pid = c.post("/api/projects", json={"name": "Rel"}).json()["id"]
+    root = Path(c.get(f"/api/projects/{pid}").json()["root_path"])
+    (root / "renders").mkdir(exist_ok=True)
+    (root / "renders" / "clip_a.mp4").write_bytes(b"A")
+    r = c.post(f"/api/projects/{pid}/import", json={"path": str(root / "renders" / "clip_a.mp4")})
+    assert r.json()["name"] == "renders/clip_a.mp4"
+    assert not (root / "renders" / "clip_a_2.mp4").exists()

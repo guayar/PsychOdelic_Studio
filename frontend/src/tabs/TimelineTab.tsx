@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type Clip, type Project } from "../api";
 import { useI18n } from "../i18n";
 import { TimelinePreview } from "./TimelinePreview";
+import { InputPicker } from "./InputPicker";
 
 type Row = { clip_id: string; source_path: string; source_in: string; source_out: string; timeline_start: string };
 const toRow = (c: Clip): Row => ({ clip_id: c.clip_id, source_path: c.source_path, source_in: String(c.source_in),
@@ -114,7 +115,7 @@ export function TimelineTab({ project }: { project: Project }) {
             {rows.map((r, i) => (
               <tr key={i}>
                 <td><input value={r.clip_id} onChange={(e) => upd(i, { clip_id: e.target.value })} style={{ width: 120 }} /></td>
-                <td><input value={r.source_path} placeholder="renders/…mp4" onChange={(e) => upd(i, { source_path: e.target.value })} /></td>
+                <td style={{ display: "flex", gap: 6, alignItems: "center" }}><input style={{ flex: 1 }} value={r.source_path} placeholder="renders/…mp4" onChange={(e) => upd(i, { source_path: e.target.value })} /><InputPicker kinds={["video", "image"]} projectId={project.id} label="…" onPick={(n) => upd(i, { source_path: n })} /></td>
                 <td className="num"><input value={r.source_in} onChange={(e) => upd(i, { source_in: e.target.value })} style={{ width: 90, textAlign: "right" }} /></td>
                 <td className="num"><input value={r.source_out} onChange={(e) => upd(i, { source_out: e.target.value })} style={{ width: 90, textAlign: "right" }} /></td>
                 <td className="num"><input value={r.timeline_start} onChange={(e) => upd(i, { timeline_start: e.target.value })} style={{ width: 90, textAlign: "right" }} /><div className="hint">{tc(Number(r.timeline_start) || 0)}</div></td>
