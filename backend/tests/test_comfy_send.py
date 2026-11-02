@@ -149,6 +149,6 @@ def test_scene_without_references_has_no_image_inputs():
     g, frames = build_scene_graph("Ogrodnik stoi.", 7, 5, 1344, 768, [], "shots/x")
     assert frames == 124
     n = g["7"]["inputs"]
-    assert not any(k.startswith("ref_image") or k.startswith("ref_images") for k in n)
+    assert not any((k.startswith("ref_image") and k != "ref_image_size") or k.startswith("ref_images") for k in n)
     assert n["ref_image_size"] == "match" and n["prompt"] == "Ogrodnik stoi."
     assert not any(v.get("class_type") == "LoadImage" for v in g.values())
