@@ -92,6 +92,20 @@ assert(await page.getByRole("button", { name: "Zapisz oś" }).isDisabled(), "zap
 ok("oś: nakładanie wykryte, zapis zablokowany");
 await page.screenshot({ path: `${SHOTS}/05_timeline.png`, fullPage: true });
 
+// 7. jezyk: przelacz na angielski i sprawdz napisy; sprawdzenie ComfyUI (serwer nieosiagalny = uczciwy komunikat)
+await page.locator(".lang button", { hasText: "EN" }).click();
+await page.locator(".tabs button", { hasText: "Timeline" }).waitFor();
+assert((await page.locator(".tabs button", { hasText: "Oś montażowa" }).count()) === 0, "po EN nadal polski");
+ok("jezyk: angielski przelaczony");
+await page.locator(".tabs button", { hasText: "System status" }).click();
+await page.getByRole("button", { name: "Check ComfyUI" }).click();
+await page.getByText("ComfyUI does not respond").first().waitFor();
+ok("ComfyUI: brak odpowiedzi pokazany uczciwie");
+await page.locator(".lang button", { hasText: "PL" }).click();
+await page.locator(".tabs button", { hasText: "Stan systemu" }).waitFor();
+await page.screenshot({ path: `${SHOTS}/06_status_pl.png`, fullPage: true });
+ok("jezyk: powrot do polskiego");
+
 assert(errors.length === 0, "bledy w konsoli: " + errors.join(" | "));
 await browser.close();
 console.log("\nWszystkie testy przegladarki OK. Zrzuty: " + SHOTS);

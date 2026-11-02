@@ -1,0 +1,222 @@
+import { createContext, useContext, useState, type ReactNode } from "react";
+
+// Jedno zrodlo prawdy: klucze z PL. EN musi miec KAZDY klucz (sprawdza to TypeScript).
+export const PL = {
+  "app.local": "lokalnie · 127.0.0.1",
+  "nav.plan": "Plan ujęć", "nav.h3": "H3 Extender", "nav.ltx": "LTX lipsync", "nav.jobs": "Zadania",
+  "nav.review": "Przegląd", "nav.timeline": "Oś montażowa", "nav.status": "Stan systemu",
+  "projects.title": "Projekty", "projects.empty": "Brak projektów. Utwórz pierwszy poniżej.",
+  "projects.meta": "zadania: {jobs} · warianty: {variants}", "projects.new": "Nowy projekt",
+  "projects.create": "Utwórz projekt", "projects.placeholder": "np. Once Upon a Garden",
+  "projects.pick": "Wybierz projekt", "projects.needOne": "Utwórz projekt po lewej, aby zacząć planowanie ujęć.",
+  "projects.duplicate": "Projekt o tej nazwie już istnieje.",
+  "chip.render.on": "Render GPU: włączony", "chip.render.off": "Render GPU: wyłączony",
+  "chip.vram.ok": "VRAM: odczytany", "chip.vram.no": "VRAM: niezweryfikowany",
+  "chip.llm.ok": "Model lokalny: działa", "chip.llm.rule": "Model lokalny: tryb regułowy",
+  "lang.label": "Język",
+  "common.save": "Zapisz", "common.saved": "zapisane", "common.unsaved": "niezapisane zmiany",
+  "common.copy": "Kopiuj", "common.copied": "Skopiowano", "common.remove": "usuń", "common.close": "Zwiń",
+  "common.open": "Historia", "common.refresh": "Odśwież", "common.loading": "Ładowanie…", "common.none": "brak",
+  "common.noData": "Brak danych.", "common.yes": "tak", "common.no": "nie",
+  "state.PLAN_READY": "plan gotowy", "state.PREPARED": "przygotowane", "state.DIRECTOR_UNLOADING": "zwalnianie Directora",
+  "state.GPU_FREE_VERIFIED": "GPU wolne", "state.RENDER_QUEUED": "w kolejce", "state.RENDERING": "renderowanie",
+  "state.OUTPUT_VALIDATING": "sprawdzanie wyniku", "state.POSTPROCESSING": "postprocessing",
+  "state.AWAITING_USER_REVIEW": "czeka na Twoją ocenę", "state.ACCEPTED": "zaakceptowane", "state.REJECTED": "odrzucone",
+  "state.DIRECTOR_RELOAD_PENDING": "ładowanie Directora", "state.DIRECTOR_READY": "gotowe", "state.FAILED": "błąd",
+  "state.CANCELLED": "anulowane", "state.RECOVERING": "odzyskiwanie", "state.GPU_BUSY": "GPU zajęte",
+  "state.CAPABILITY_UNAVAILABLE": "niedostępne",
+  "kind.h3_extend": "H3 Extender", "kind.ltx_lip": "LTX lipsync",
+  "status.potwierdzone": "potwierdzone", "status.niezweryfikowane": "niezweryfikowane", "status.niedostepne": "niedostępne",
+  "plan.title": "Plan ujęć", "plan.lead": "Opisz ujęcia po kolei. Czas wpisz jako 12.5 albo 1:02.5. Każde ujęcie dostaje liczbę klatek zgodną z siatką H3 (17n+5 przy 24 fps), a prompt zapisujesz jako plik w projekcie.",
+  "plan.shots": "Ujęcia", "plan.colNo": "#", "plan.colStart": "Start (s)", "plan.colEnd": "Koniec (s)",
+  "plan.colText": "Opis (pozytywnie: jeden ruch kamery, bohater milczy)", "plan.add": "+ dodaj ujęcie",
+  "plan.check": "Sprawdź plan", "plan.badTime": "Czas musi być liczbą (12.5) albo zapisem m:ss.s (1:02.5).",
+  "plan.result": "Wynik · {shots} ujęć · {frames} klatek łącznie", "plan.saveAll": "Zapisz wszystkie prompty",
+  "plan.savedAll": "Zapisano {n} promptów w prompts/ (shot_01…). Gotowe do użycia w H3 Extender.",
+  "plan.savedOne": "Zapisano {path} (użyj go w zakładce H3 Extender).", "plan.colTime": "Czas", "plan.colFrames": "Klatki H3",
+  "plan.colPrompt": "Prompt", "plan.savePrompt": "Zapisz prompt", "plan.emptyPrompt": "(pusty)",
+  "plan.placeholder": "The gardener stands still and watches the roses…", "plan.removeShot": "Usuń ujęcie",
+  "h3.title": "H3 Extender",
+  "h3.lead": "Przygotuj przedłużenie ujęcia. Aplikacja zbuduje dokładną komendę produkcyjnego skryptu gen_extender_refine.py i sprawdzi wejścia. Nic nie jest renderowane, dopóki nie włączysz renderu (obecnie wyłączony).",
+  "h3.prompt": "Prompt", "h3.promptFile": "Plik promptu w projekcie", "h3.promptNone": "(brak — utwórz w Planie ujęć)",
+  "h3.promptText": "Treść (pozytywnie, jeden ruch kamery, bohater milczy)", "h3.settings": "Ustawienia",
+  "h3.prefix": "Prefiks wyniku", "h3.seed": "Seed", "h3.cont": "Kontynuacja (CONT, plik w ComfyUI input)",
+  "h3.durs": "Długości segmentów (s, po przecinku)", "h3.dursHint": "H3 wymaga siatki 17n+5 przy 24 fps.",
+  "h3.runmode": "Tryb (RUNMODE)", "h3.validated": "Zatwierdzone segmenty (VALIDATED)",
+  "h3.fullres": "Pełna rozdzielczość 1344×768", "h3.refine": "Refine (dopracowanie)",
+  "h3.refs": "Referencje obrazów", "h3.refsHint": "Kolejność = numer <Picture N> w prompcie. Pliki muszą leżeć w ComfyUI input.",
+  "h3.refsFull": "Limit osiągnięty — usuń pozycję", "h3.refsPlaceholder": "np. oug_gsheet2.png", "h3.addRef": "Dodaj referencję",
+  "h3.refsLimit": "Limit H3: {max} referencji obrazów.", "h3.control": "Sterowanie (ControlNet) — opcjonalne",
+  "h3.ctrl": "Obraz sterujący (CTRL)", "h3.ctrlFrames": "Liczba klatek sterowania", "h3.ctrlStrength": "Siła (0–10)",
+  "h3.prepare": "Przygotuj komendę (bez renderu)", "h3.preparing": "Przygotowuję…",
+  "h3.prepared": "Przygotowano. Komenda poniżej NIE została uruchomiona.",
+  "h3.readyCmd": "Gotowa komenda · zadanie {id} · stan: {state}",
+  "h3.unsaved": "niezapisane zmiany", "h3.savePrompt": "Zapisz prompt", "h3.savedAs": "Zapisano {path}",
+  "h3.promptPlaceholder": "Gardener stands still; camera locked off.",
+  "ltx.title": "LTX lipsync", "ltx.lead": "Scena z mową: ogon poprzedniego klipu, wycinek audio z master WAV i prompt. Zgodnie z zasadą projektu audio pochodzi z oryginalnego pliku, a wynik trafia do zakładki Przegląd.",
+  "ltx.tail": "Ogon (plik w ComfyUI input)", "ltx.tailFrames": "Klatki ogona", "ltx.audio": "Audio (plik wav w ComfyUI input)",
+  "ltx.audioFrames": "Klatki audio (24 kl./s)", "ltx.prompt": "Prompt", "ltx.noPrompts": "(brak promptów)",
+  "ltx.audioShift": "Przesunięcie audio (klatki)", "ltx.seed": "Seed", "ltx.prefix": "Prefiks wyniku",
+  "cmd.title": "Gotowa komenda", "cmd.copy": "Kopiuj polecenie", "cmd.copied": "Skopiowano", "cmd.env": "Zmienne środowiskowe",
+  "cmd.expected": "Oczekiwany wynik", "cmd.script": "Skrypt", "cmd.none": "brak",
+  "jobs.title": "Zadania", "jobs.lead": "Każde przygotowanie komendy jest zadaniem z pełną historią zmian stanu. Zadania nie są uruchamiane, dopóki render nie zostanie włączony.",
+  "jobs.empty": "Brak zadań. Przygotuj pierwsze ujęcie w zakładce H3 Extender lub LTX lipsync.",
+  "jobs.colType": "Typ", "jobs.colState": "Stan", "jobs.colCreated": "Utworzono", "jobs.colUpdated": "Zaktualizowano",
+  "jobs.history": "Historia zadania {id}", "jobs.show": "Historia", "jobs.hide": "Zwiń",
+  "review.title": "Przegląd ujęć", "review.lead": "Tu decydujesz o jakości. Akceptacja i odrzucenie zapisują decyzję i notatkę. Żadna decyzja nie kasuje plików: odrzucone ujęcia zostają do ewentualnego powrotu.",
+  "review.add": "Dodaj wynik do przeglądu", "review.path": "Plik względem projektu", "review.kind": "Rodzaj",
+  "review.frames": "Liczba klatek", "review.register": "Dodaj do przeglądu", "review.registered": "Wariant dodany do przeglądu.",
+  "review.pending": "Do oceny · {n}", "review.none": "Nic nie czeka na ocenę.", "review.note": "Notatka (np. „zbyt miękko na szwie”)",
+  "review.accept": "Akceptuj", "review.reject": "Odrzuć", "review.acceptedMsg": "Zaakceptowano. Plik pozostaje na dysku.",
+  "review.rejectedMsg": "Odrzucono. Plik pozostaje na dysku (nic nie jest kasowane).", "review.done": "Zdecydowane · {n}",
+  "review.statusAccepted": "zaakceptowany", "review.statusRejected": "odrzucony",
+  "kind.new_only": "nowe klatki", "kind.cumulative": "kumulacyjny", "kind.raw": "surowy", "kind.preview": "podgląd",
+  "kind.audio_slice": "wycinek audio", "kind.other": "inny",
+  "tl.title": "Oś montażowa", "tl.lead": "Ułóż zatwierdzone klipy w czasie utworu. Zakres źródła [początek, koniec): koniec jest wyłączny, a klatki liczone są w FPS osi (24). Ścieżka audio zawsze pochodzi z oryginalnego master WAV.",
+  "tl.length": "Długość osi: {frames} kl. · koniec {tc}", "tl.ok": "układ poprawny", "tl.issues": "{n} do poprawy",
+  "tl.colClip": "Klip", "tl.colFile": "Plik źródłowy", "tl.colIn": "Wejście", "tl.colOut": "Wyjście (wył.)",
+  "tl.colStart": "Start na osi", "tl.empty": "Brak klipów. Dodaj pierwszy.", "tl.addClip": "+ dodaj klip",
+  "tl.save": "Zapisz oś", "tl.saved": "Oś zapisana.", "tl.exportCsv": "Eksport CSV", "tl.exportJson": "Eksport JSON",
+  "tl.export": "Eksport", "tl.noFile": "brak pliku", "tl.badRange": "koniec (wyłączny) musi być po początku",
+  "tl.overlap": "{a} i {b} nakładają się na osi", "tl.fix": "do poprawy",
+  "status.title": "Stan systemu", "status.lead": "Tylko odczyt: co aplikacja wie o tym komputerze. Niepotwierdzone wartości są oznaczone, a nie udawane.",
+  "status.gpu": "Karta graficzna (VRAM)", "status.llm": "Model lokalny (Director)", "status.doctor": "Diagnostyka środowiska",
+  "status.note.llm": "Aplikacja nie ładuje ani nie zwalnia modelu. To wymaga osobnego testu na GPU.",
+  "status.comfy": "Zgodność z ComfyUI (wymagane węzły i modele)", "status.comfyCheck": "Sprawdź ComfyUI",
+  "status.comfyUnreachable": "ComfyUI nie odpowiada. To nie dowód braku modeli.", "status.ready": "Gotowe", "status.missing": "Brakuje",
+  "status.profile": "Profil", "status.colItem": "Element", "status.colStatus": "Status", "status.colDetail": "Szczegóły",
+  "status.colSource": "Źródło wymagania", "status.colAction": "Co zrobić",
+  "status.render": "Render wyłączony w tej wersji (brak zgody uzytkownika).",
+  "badge.FOUND": "jest", "badge.MISSING": "brakuje", "badge.ok": "potwierdzone", "badge.warn": "niezweryfikowane", "badge.err": "niedostępne",
+  "status.vramGpu": "GPU {n}: {used} / {total} w użyciu", "status.models": "modele: {list}",
+  "alert.nothingRun": "Przygotowano. Komenda poniżej NIE została uruchomiona.",
+  "lang.pl": "PL", "lang.en": "EN",
+};
+
+export type Key = keyof typeof PL;
+
+export const EN: Record<Key, string> = {
+  "app.local": "local · 127.0.0.1",
+  "nav.plan": "Shot plan", "nav.h3": "H3 Extender", "nav.ltx": "LTX lipsync", "nav.jobs": "Jobs",
+  "nav.review": "Review", "nav.timeline": "Timeline", "nav.status": "System status",
+  "projects.title": "Projects", "projects.empty": "No projects yet. Create the first one below.",
+  "projects.meta": "jobs: {jobs} · variants: {variants}", "projects.new": "New project",
+  "projects.create": "Create project", "projects.placeholder": "e.g. Once Upon a Garden",
+  "projects.pick": "Choose a project", "projects.needOne": "Create a project on the left to start planning shots.",
+  "projects.duplicate": "A project with this name already exists.",
+  "chip.render.on": "GPU render: on", "chip.render.off": "GPU render: off",
+  "chip.vram.ok": "VRAM: read", "chip.vram.no": "VRAM: unverified",
+  "chip.llm.ok": "Local model: running", "chip.llm.rule": "Local model: rule mode",
+  "lang.label": "Language",
+  "common.save": "Save", "common.saved": "saved", "common.unsaved": "unsaved changes",
+  "common.copy": "Copy", "common.copied": "Copied", "common.remove": "remove", "common.close": "Collapse",
+  "common.open": "History", "common.refresh": "Refresh", "common.loading": "Loading…", "common.none": "none",
+  "common.noData": "No data.", "common.yes": "yes", "common.no": "no",
+  "state.PLAN_READY": "plan ready", "state.PREPARED": "prepared", "state.DIRECTOR_UNLOADING": "unloading Director",
+  "state.GPU_FREE_VERIFIED": "GPU free", "state.RENDER_QUEUED": "queued", "state.RENDERING": "rendering",
+  "state.OUTPUT_VALIDATING": "checking output", "state.POSTPROCESSING": "postprocessing",
+  "state.AWAITING_USER_REVIEW": "waiting for your review", "state.ACCEPTED": "accepted", "state.REJECTED": "rejected",
+  "state.DIRECTOR_RELOAD_PENDING": "reloading Director", "state.DIRECTOR_READY": "ready", "state.FAILED": "failed",
+  "state.CANCELLED": "cancelled", "state.RECOVERING": "recovering", "state.GPU_BUSY": "GPU busy",
+  "state.CAPABILITY_UNAVAILABLE": "unavailable",
+  "kind.h3_extend": "H3 Extender", "kind.ltx_lip": "LTX lipsync",
+  "status.potwierdzone": "confirmed", "status.niezweryfikowane": "unverified", "status.niedostepne": "unavailable",
+  "plan.title": "Shot plan", "plan.lead": "Describe the shots in order. Enter time as 12.5 or 1:02.5. Each shot gets a frame count on the H3 grid (17n+5 at 24 fps); save prompts as files in the project.",
+  "plan.shots": "Shots", "plan.colNo": "#", "plan.colStart": "Start (s)", "plan.colEnd": "End (s)",
+  "plan.colText": "Description (positive: one camera move, the hero stays silent)", "plan.add": "+ add shot",
+  "plan.check": "Check plan", "plan.badTime": "Time must be a number (12.5) or m:ss.s (1:02.5).",
+  "plan.result": "Result · {shots} shots · {frames} frames total", "plan.saveAll": "Save all prompts",
+  "plan.savedAll": "Saved {n} prompts to prompts/ (shot_01…). Ready for H3 Extender.",
+  "plan.savedOne": "Saved {path} (use it in the H3 Extender tab).", "plan.colTime": "Time", "plan.colFrames": "H3 frames",
+  "plan.colPrompt": "Prompt", "plan.savePrompt": "Save prompt", "plan.emptyPrompt": "(empty)",
+  "plan.placeholder": "The gardener stands still and watches the roses…", "plan.removeShot": "Remove shot",
+  "h3.title": "H3 Extender",
+  "h3.lead": "Prepare a shot extension. The app builds the exact command for the production script gen_extender_refine.py and checks the inputs. Nothing is rendered until you enable rendering (currently off).",
+  "h3.prompt": "Prompt", "h3.promptFile": "Prompt file in the project", "h3.promptNone": "(none — create one in Shot plan)",
+  "h3.promptText": "Text (positive, one camera move, the hero stays silent)", "h3.settings": "Settings",
+  "h3.prefix": "Output prefix", "h3.seed": "Seed", "h3.cont": "Continuation (CONT, file in ComfyUI input)",
+  "h3.durs": "Segment lengths (s, comma-separated)", "h3.dursHint": "H3 needs the 17n+5 grid at 24 fps.",
+  "h3.runmode": "Mode (RUNMODE)", "h3.validated": "Approved segments (VALIDATED)",
+  "h3.fullres": "Full resolution 1344×768", "h3.refine": "Refine",
+  "h3.refs": "Image references", "h3.refsHint": "Order = the <Picture N> number in the prompt. Files must be in ComfyUI input.",
+  "h3.refsFull": "Limit reached — remove an item", "h3.refsPlaceholder": "e.g. oug_gsheet2.png", "h3.addRef": "Add reference",
+  "h3.refsLimit": "H3 limit: {max} image references.", "h3.control": "Control (ControlNet) — optional",
+  "h3.ctrl": "Control image (CTRL)", "h3.ctrlFrames": "Control frame count", "h3.ctrlStrength": "Strength (0–10)",
+  "h3.prepare": "Prepare command (no render)", "h3.preparing": "Preparing…",
+  "h3.prepared": "Prepared. The command below was NOT run.",
+  "h3.readyCmd": "Ready command · job {id} · state: {state}",
+  "h3.unsaved": "unsaved changes", "h3.savePrompt": "Save prompt", "h3.savedAs": "Saved {path}",
+  "h3.promptPlaceholder": "Gardener stands still; camera locked off.",
+  "ltx.title": "LTX lipsync", "ltx.lead": "A speaking scene: the tail of the previous clip, a slice of the audio from the master WAV and a prompt. Per project rules the audio comes from the original file, and the result goes to Review.",
+  "ltx.tail": "Tail (file in ComfyUI input)", "ltx.tailFrames": "Tail frames", "ltx.audio": "Audio (wav file in ComfyUI input)",
+  "ltx.audioFrames": "Audio frames (24 fps)", "ltx.prompt": "Prompt", "ltx.noPrompts": "(no prompts)",
+  "ltx.audioShift": "Audio shift (frames)", "ltx.seed": "Seed", "ltx.prefix": "Output prefix",
+  "cmd.title": "Ready command", "cmd.copy": "Copy command", "cmd.copied": "Copied", "cmd.env": "Environment variables",
+  "cmd.expected": "Expected output", "cmd.script": "Script", "cmd.none": "none",
+  "jobs.title": "Jobs", "jobs.lead": "Each prepared command is a job with a full history of state changes. Jobs are not run until rendering is enabled.",
+  "jobs.empty": "No jobs yet. Prepare the first shot in H3 Extender or LTX lipsync.",
+  "jobs.colType": "Type", "jobs.colState": "State", "jobs.colCreated": "Created", "jobs.colUpdated": "Updated",
+  "jobs.history": "Job history {id}", "jobs.show": "History", "jobs.hide": "Collapse",
+  "review.title": "Shot review", "review.lead": "This is where you judge quality. Accepting or rejecting saves the decision and a note. No decision deletes files: rejected shots stay in case you need them.",
+  "review.add": "Add a result to review", "review.path": "File relative to the project", "review.kind": "Kind",
+  "review.frames": "Frame count", "review.register": "Add to review", "review.registered": "Variant added to review.",
+  "review.pending": "To review · {n}", "review.none": "Nothing waiting for review.", "review.note": "Note (e.g. “too soft at the seam”)",
+  "review.accept": "Accept", "review.reject": "Reject", "review.acceptedMsg": "Accepted. The file stays on disk.",
+  "review.rejectedMsg": "Rejected. The file stays on disk (nothing is deleted).", "review.done": "Decided · {n}",
+  "review.statusAccepted": "accepted", "review.statusRejected": "rejected",
+  "kind.new_only": "new frames", "kind.cumulative": "cumulative", "kind.raw": "raw", "kind.preview": "preview",
+  "kind.audio_slice": "audio slice", "kind.other": "other",
+  "tl.title": "Timeline", "tl.lead": "Arrange approved clips along the song. Source range [start, end): the end is exclusive, and frames are counted at the timeline FPS (24). Audio always comes from the original master WAV.",
+  "tl.length": "Timeline length: {frames} fr. · ends {tc}", "tl.ok": "layout OK", "tl.issues": "{n} to fix",
+  "tl.colClip": "Clip", "tl.colFile": "Source file", "tl.colIn": "In", "tl.colOut": "Out (excl.)",
+  "tl.colStart": "Start on timeline", "tl.empty": "No clips yet. Add the first one.", "tl.addClip": "+ add clip",
+  "tl.save": "Save timeline", "tl.saved": "Timeline saved.", "tl.exportCsv": "Export CSV", "tl.exportJson": "Export JSON",
+  "tl.export": "Export", "tl.noFile": "no file", "tl.badRange": "end (exclusive) must be after the start",
+  "tl.overlap": "{a} and {b} overlap on the timeline", "tl.fix": "to fix",
+  "status.title": "System status", "status.lead": "Read-only: what the app knows about this computer. Unconfirmed values are marked, not faked.",
+  "status.gpu": "Graphics card (VRAM)", "status.llm": "Local model (Director)", "status.doctor": "Environment diagnostics",
+  "status.note.llm": "The app does not load or unload the model. That needs a separate GPU test.",
+  "status.comfy": "ComfyUI compatibility (required nodes and models)", "status.comfyCheck": "Check ComfyUI",
+  "status.comfyUnreachable": "ComfyUI does not respond. This is not proof that models are missing.", "status.ready": "Ready", "status.missing": "Missing",
+  "status.profile": "Profile", "status.colItem": "Item", "status.colStatus": "Status", "status.colDetail": "Details",
+  "status.colSource": "Requirement source", "status.colAction": "What to do",
+  "status.render": "Rendering is off in this version (no user consent).",
+  "badge.FOUND": "found", "badge.MISSING": "missing", "badge.ok": "confirmed", "badge.warn": "unverified", "badge.err": "unavailable",
+  "status.vramGpu": "GPU {n}: {used} / {total} in use", "status.models": "models: {list}",
+  "alert.nothingRun": "Prepared. The command below was NOT run.",
+  "lang.pl": "PL", "lang.en": "EN",
+};
+
+type Ctx = { lang: "pl" | "en"; setLang: (l: "pl" | "en") => void; t: (k: Key, v?: Record<string, string | number>) => string };
+const Lang = createContext<Ctx | null>(null);
+
+function initialLang(): "pl" | "en" {
+  try {
+    const v = window.localStorage.getItem("psy.lang");
+    if (v === "pl" || v === "en") return v;
+  } catch {
+    /* brak dostepu do localStorage: domyslnie polski */
+  }
+  return "pl";
+}
+
+export function LangProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<"pl" | "en">(initialLang);
+  const setLang = (l: "pl" | "en") => {
+    setLangState(l);
+    try { window.localStorage.setItem("psy.lang", l); } catch { /* ignoruj */ }
+  };
+  const t = (k: Key, v?: Record<string, string | number>) => {
+    const dict: Record<string, string> = lang === "en" ? EN : PL;
+    let s = dict[k] ?? PL[k];
+    if (v) for (const [name, val] of Object.entries(v)) s = s.split(`{${name}}`).join(String(val));
+    return s;
+  };
+  return <Lang.Provider value={{ lang, setLang, t }}>{children}</Lang.Provider>;
+}
+
+export function useI18n(): Ctx {
+  const c = useContext(Lang);
+  if (!c) throw new Error("useI18n poza LangProvider");
+  return c;
+}

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, type Command, type PrepareResult, type Project, type PromptFile } from "../api";
+import { api, type PrepareResult, type Project, type PromptFile } from "../api";
+import { useI18n } from "../i18n";
 import { CommandView } from "./CommandView";
 
 export function LtxTab({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [prompts, setPrompts] = useState<PromptFile[]>([]);
   const [promptName, setPromptName] = useState("");
   const [tail, setTail] = useState("");
@@ -14,7 +16,7 @@ export function LtxTab({ project }: { project: Project }) {
   const [prefix, setPrefix] = useState("OUG/lip_1");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-  const [prepared, setPrepared] = useState<{ command: Command } | null>(null);
+  const [prepared, setPrepared] = useState<{ command: PrepareResult["command"] } | null>(null);
 
   useEffect(() => {
     api.get<PromptFile[]>(`/api/projects/${project.id}/prompts`).then((list) => {
@@ -33,7 +35,7 @@ export function LtxTab({ project }: { project: Project }) {
         audio_shift: Number(audioShift),
       });
       setPrepared(res);
-      setMsg({ kind: "ok", text: "Przygotowano. Komenda poniżej NIE została uruchomiona." });
+      setMsg({ kind: "ok", text: t("h3.prepared") });
     } catch (e) {
       setMsg({ kind: "err", text: (e as Error).message });
     } finally { setBusy(false); }
@@ -42,34 +44,33 @@ export function LtxTab({ project }: { project: Project }) {
   return (
     <div className="stack">
       <div>
-        <h2>LTX lipsync</h2>
-        <p className="lead">Scena z mową: ogon poprzedniego klipu, wycinek audio z master WAV i prompt. Zgodnie z zasadą
-          projektu audio pochodzi z oryginalnego pliku, a wynik trafia do zakładki Przegląd.</p>
+        <h2>{t("ltx.title")}</h2>
+        <p className="lead">{t("ltx.lead")}</p>
       </div>
       {msg && <div className={`alert ${msg.kind}`}>{msg.text}</div>}
       <div className="card">
         <div className="grid2">
-          <label><span>Ogon (plik w ComfyUI input)</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="oug_cu_rose_tight_tail.mp4" /></label>
-          <label><span>Klatki ogona</span><input value={tailFrames} onChange={(e) => setTailFrames(e.target.value)} /></label>
-          <label><span>Audio (plik wav w ComfyUI input)</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="oug_lip_rose1.wav" /></label>
-          <label><span>Klatki audio (24 kl./s)</span><input value={audioFrames} onChange={(e) => setAudioFrames(e.target.value)} placeholder="np. 141" /></label>
-          <label><span>Prompt</span>
+          <label><span>{t("ltx.tail")}</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="oug_cu_rose_tight_tail.mp4" /></label>
+          <label><span>{t("ltx.tailFrames")}</span><input value={tailFrames} onChange={(e) => setTailFrames(e.target.value)} /></label>
+          <label><span>{t("ltx.audio")}</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="oug_lip_rose1.wav" /></label>
+          <label><span>{t("ltx.audioFrames")}</span><input value={audioFrames} onChange={(e) => setAudioFrames(e.target.value)} placeholder="141" /></label>
+          <label><span>{t("ltx.prompt")}</span>
             <select value={promptName} onChange={(e) => setPromptName(e.target.value)}>
-              {prompts.length === 0 && <option value="">(brak promptów)</option>}
+              {prompts.length === 0 && <option value="">{t("ltx.noPrompts")}</option>}
               {prompts.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
           </label>
-          <label><span>Przesunięcie audio (klatki)</span><input value={audioShift} onChange={(e) => setAudioShift(e.target.value)} /></label>
-          <label><span>Seed</span><input value={seed} onChange={(e) => setSeed(e.target.value)} /></label>
-          <label><span>Prefiks wyniku</span><input value={prefix} onChange={(e) => setPrefix(e.target.value)} /></label>
+          <label><span>{t("ltx.audioShift")}</span><input value={audioShift} onChange={(e) => setAudioShift(e.target.value)} /></label>
+          <label><span>{t("ltx.seed")}</span><input value={seed} onChange={(e) => setSeed(e.target.value)} /></label>
+          <label><span>{t("ltx.prefix")}</span><input value={prefix} onChange={(e) => setPrefix(e.target.value)} /></label>
         </div>
         <div className="row end" style={{ marginTop: 14 }}>
           <button className="primary" onClick={prepare} disabled={busy || !promptName || !tail || !audio}>
-            {busy ? "Przygotowuję…" : "Przygotuj komendę (bez renderu)"}
+            {busy ? t("h3.preparing") : t("h3.prepare")}
           </button>
         </div>
       </div>
-      {prepared && <div className="card"><h3>Gotowa komenda</h3><CommandView command={prepared.command} /></div>}
+      {prepared && <div className="card"><h3>{t("cmd.title")}</h3><CommandView command={prepared.command} /></div>}
     </div>
   );
 }

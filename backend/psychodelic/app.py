@@ -91,7 +91,7 @@ def create_app(data_dir=None, comfy_url=None):
         return job
 
     from .api.routes import register
-    register(app, conn, lock, data_dir)
+    register(app, conn, lock, data_dir, comfy_url=comfy)
 
     # Zbudowany frontend (frontend/dist) serwowany z tego samego originu. Trasy /api maja pierwszenstwo.
     ui_dir = Path(os.environ.get("PSYCHODELIC_UI_DIR", Path(__file__).resolve().parents[2] / "frontend" / "dist"))

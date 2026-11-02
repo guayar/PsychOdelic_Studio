@@ -92,7 +92,7 @@ def _hash(obj):
     return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:32]
 
 
-def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434"):
+def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_url="http://127.0.0.1:8188"):
     jobs = JobStore(conn)
 
     def _project_or_404(pid):
@@ -308,6 +308,27 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434"):
                 n_var = conn.execute("SELECT COUNT(*) FROM render_variants WHERE project_id = ?", (p["id"],)).fetchone()[0]
                 out.append(dict(p, jobs=n_jobs, variants=n_var))
             return out
+
+    @app.get("/api/comfy/check/{profile}")
+    def comfy_check(profile: str):
+        """Porownuje wymagania profilu z object_info serwera ComfyUI. Tylko GET; tylko 127.0.0.1."""
+        from ..workflows.profiles import PROFILES, check_profile, summary
+        if profile not in PROFILES:
+            raise HTTPException(404, "nieznany profil")
+        if not comfy_url.startswith(("http://127.0.0.1", "http://localhost")):
+            raise HTTPException(422, "ComfyUI tylko lokalnie")
+        import urllib.error
+        import urllib.request
+        try:
+            with urllib.request.urlopen(f"{comfy_url}/object_info", timeout=5) as resp:
+                info = json.load(resp)
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            return {"profile": profile, "title": PROFILES[profile]["title"], "reachable": False,
+                    "detail": f"ComfyUI nie odpowiada ({type(exc).__name__}). To nie dowod braku modeli.",
+                    "items": [], "summary": None}
+        items = check_profile(profile, info)
+        return {"profile": profile, "title": PROFILES[profile]["title"], "reachable": True,
+                "items": items, "summary": summary(items)}
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"], include_in_schema=False)
     def api_not_found(rest: str):

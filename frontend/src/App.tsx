@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, type Project, type Status } from "./api";
+import { useI18n, type Key } from "./i18n";
 import { PlanTab } from "./tabs/PlanTab";
 import { H3Tab } from "./tabs/H3Tab";
 import { LtxTab } from "./tabs/LtxTab";
@@ -9,17 +10,14 @@ import { TimelineTab } from "./tabs/TimelineTab";
 import { StatusTab } from "./tabs/StatusTab";
 
 type TabId = "plan" | "h3" | "ltx" | "jobs" | "review" | "timeline" | "status";
-const TABS: { id: TabId; label: string }[] = [
-  { id: "plan", label: "Plan ujęć" },
-  { id: "h3", label: "H3 Extender" },
-  { id: "ltx", label: "LTX lipsync" },
-  { id: "jobs", label: "Zadania" },
-  { id: "review", label: "Przegląd" },
-  { id: "timeline", label: "Oś montażowa" },
-  { id: "status", label: "Stan systemu" },
+const TABS: { id: TabId; key: Key }[] = [
+  { id: "plan", key: "nav.plan" }, { id: "h3", key: "nav.h3" }, { id: "ltx", key: "nav.ltx" },
+  { id: "jobs", key: "nav.jobs" }, { id: "review", key: "nav.review" }, { id: "timeline", key: "nav.timeline" },
+  { id: "status", key: "nav.status" },
 ];
 
 export function App() {
+  const { t, lang, setLang } = useI18n();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("plan");
@@ -34,18 +32,14 @@ export function App() {
   }, []);
 
   const loadStatus = useCallback(async () => {
-    try {
-      setStatus(await api.get<Status>("/api/system/status"));
-    } catch {
-      setStatus(null);
-    }
+    try { setStatus(await api.get<Status>("/api/system/status")); } catch { setStatus(null); }
   }, []);
 
   useEffect(() => {
     loadProjects().catch((e: Error) => setError(e.message));
     loadStatus();
-    const t = setInterval(loadStatus, 15000);
-    return () => clearInterval(t);
+    const timer = setInterval(loadStatus, 15000);
+    return () => clearInterval(timer);
   }, [loadProjects, loadStatus]);
 
   async function createProject() {
@@ -58,11 +52,15 @@ export function App() {
       setSelected(p.id);
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg.includes("już istnieje") ? t("projects.duplicate") : msg);
     }
   }
 
   const project = projects.find((p) => p.id === selected) ?? null;
+  const renderOn = Boolean(status?.render_enabled);
+  const vramOk = status?.vram.status === "POTWIERDZONE_TESTEM";
+  const llmOk = status?.llm.runtime === "ollama" && status.llm.status === "POTWIERDZONE_TESTEM";
 
   return (
     <div className="app">
@@ -71,57 +69,55 @@ export function App() {
           <div className="dot" />
           <div>
             <b>PsychOdelic Studio</b>
-            <small>lokalnie · 127.0.0.1</small>
+            <small>{t("app.local")}</small>
           </div>
         </div>
         <div className="stack">
-          <span className="hint">Projekty</span>
-          {projects.length === 0 && <div className="hint">Brak projektów. Utwórz pierwszy poniżej.</div>}
+          <span className="hint">{t("projects.title")}</span>
+          {projects.length === 0 && <div className="hint">{t("projects.empty")}</div>}
           {projects.map((p) => (
             <button key={p.id} className={`proj ${p.id === selected ? "sel" : ""}`} onClick={() => setSelected(p.id)}>
               <div>{p.name}</div>
-              <div className="meta">zadania: {p.jobs ?? 0} · warianty: {p.variants ?? 0}</div>
+              <div className="meta">{t("projects.meta", { jobs: p.jobs ?? 0, variants: p.variants ?? 0 })}</div>
             </button>
           ))}
         </div>
         <div className="stack" style={{ marginTop: "auto" }}>
           <label>
-            <span>Nowy projekt</span>
-            <input value={newName} placeholder="np. Once Upon a Garden"
+            <span>{t("projects.new")}</span>
+            <input value={newName} placeholder={t("projects.placeholder")}
               onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createProject()} />
           </label>
-          <button className="primary" onClick={createProject} disabled={!newName.trim()}>Utwórz projekt</button>
+          <button className="primary" onClick={createProject} disabled={!newName.trim()}>{t("projects.create")}</button>
         </div>
       </aside>
 
       <main className="main">
         <div className="topbar">
-          <div className="title">{project ? project.name : "Wybierz projekt"}</div>
+          <div className="title">{project ? project.name : t("projects.pick")}</div>
           <div className="chips">
-            <span className={`chip ${status?.render_enabled ? "ok" : "off"}`} title={status?.note}>
-              Render GPU: {status ? (status.render_enabled ? "włączony" : "wyłączony") : "?"}
+            <span className={`chip ${renderOn ? "ok" : "off"}`} title={status?.note}>
+              {renderOn ? t("chip.render.on") : t("chip.render.off")}
             </span>
-            <span className={`chip ${status?.vram.status === "POTWIERDZONE_TESTEM" ? "ok" : "warn"}`}>
-              VRAM: {status?.vram.status === "POTWIERDZONE_TESTEM" ? "odczytany" : "niezweryfikowany"}
-            </span>
-            <span className={`chip ${status?.llm.status === "POTWIERDZONE_TESTEM" ? "ok" : "off"}`}>
-              Model lokalny: {status?.llm.runtime === "ollama" && status.llm.status === "POTWIERDZONE_TESTEM" ? "działa" : "tryb regułowy"}
-            </span>
+            <span className={`chip ${vramOk ? "ok" : "warn"}`}>{vramOk ? t("chip.vram.ok") : t("chip.vram.no")}</span>
+            <span className={`chip ${llmOk ? "ok" : "off"}`}>{llmOk ? t("chip.llm.ok") : t("chip.llm.rule")}</span>
+            <div className="lang" role="group" aria-label={t("lang.label")}>
+              <button className={lang === "pl" ? "on" : ""} onClick={() => setLang("pl")} aria-pressed={lang === "pl"}>{t("lang.pl")}</button>
+              <button className={lang === "en" ? "on" : ""} onClick={() => setLang("en")} aria-pressed={lang === "en"}>{t("lang.en")}</button>
+            </div>
           </div>
         </div>
 
         {error && <div style={{ padding: "10px 22px" }}><div className="alert err">{error}</div></div>}
 
         <nav className="tabs">
-          {TABS.map((t) => (
-            <button key={t.id} className={`tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
+          {TABS.map((x) => (
+            <button key={x.id} className={`tab ${tab === x.id ? "on" : ""}`} onClick={() => setTab(x.id)}>{t(x.key)}</button>
           ))}
         </nav>
 
         <div className="content">
-          {!project && tab !== "status" && (
-            <div className="empty">Utwórz projekt po lewej, aby zacząć planowanie ujęć.</div>
-          )}
+          {!project && tab !== "status" && <div className="empty">{t("projects.needOne")}</div>}
           {project && tab === "plan" && <PlanTab project={project} />}
           {project && tab === "h3" && <H3Tab project={project} />}
           {project && tab === "ltx" && <LtxTab project={project} />}

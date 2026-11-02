@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Clip, type Project } from "../api";
+import { useI18n } from "../i18n";
 
 type Row = { clip_id: string; source_path: string; source_in: string; source_out: string; timeline_start: string };
 const toRow = (c: Clip): Row => ({ clip_id: c.clip_id, source_path: c.source_path, source_in: String(c.source_in),
   source_out: String(c.source_out), timeline_start: String(c.timeline_start) });
+
 // Ten sam format co backend (frames_to_timecode): hh:mm:ss:ff przy 24 fps.
 const tc = (frames: number, fps = 24) => {
   const safe = Math.max(0, Math.floor(frames));
@@ -13,6 +15,7 @@ const tc = (frames: number, fps = 24) => {
 };
 
 export function TimelineTab({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [exported, setExported] = useState<string | null>(null);
@@ -24,34 +27,33 @@ export function TimelineTab({ project }: { project: Project }) {
   const parsed = useMemo(() => rows.map((r) => ({
     ...r, a: Number(r.timeline_start), inF: Number(r.source_in), outF: Number(r.source_out),
   })), [rows]);
+
   const localErrors = useMemo(() => {
     const errs: string[] = [];
     parsed.forEach((r) => {
-      if (!r.source_path.trim()) errs.push(`${r.clip_id || "klip"}: brak pliku`);
-      if (!(r.outF > r.inF)) errs.push(`${r.clip_id || "klip"}: koniec (wyłączny) musi być po początku`);
+      if (!r.source_path.trim()) errs.push(`${r.clip_id || "?"}: ${t("tl.noFile")}`);
+      if (!(r.outF > r.inF)) errs.push(`${r.clip_id || "?"}: ${t("tl.badRange")}`);
     });
     const sorted = [...parsed].sort((x, y) => x.a - y.a);
     sorted.forEach((r, i) => {
       const prev = sorted[i - 1];
-      if (prev && r.a < prev.a + (prev.outF - prev.inF)) errs.push(`${prev.clip_id} i ${r.clip_id} nakładają się na osi`);
+      if (prev && r.a < prev.a + (prev.outF - prev.inF)) errs.push(t("tl.overlap", { a: prev.clip_id, b: r.clip_id }));
     });
     return errs;
-  }, [parsed]);
-  const total = Math.max(0, ...parsed.map((r) => r.a + (r.outF - r.inF)));
+  }, [parsed, t]);
+
   // Klipy nakladajace sie ida na osobne sciezki (lanes), zeby bylo widac konflikt.
   const drawn = useMemo(() => {
     const ends: number[] = [];
-    return [...parsed]
-      .filter((r) => r.outF > r.inF)
-      .sort((x, y) => x.a - y.a)
-      .map((r, key) => {
-        const len = r.outF - r.inF;
-        let lane = ends.findIndex((e) => e <= r.a);
-        if (lane === -1) { lane = ends.length; ends.push(r.a + len); } else { ends[lane] = r.a + len; }
-        return { ...r, key, lane, len };
-      });
+    return [...parsed].filter((r) => r.outF > r.inF).sort((x, y) => x.a - y.a).map((r, key) => {
+      const len = r.outF - r.inF;
+      let lane = ends.findIndex((e) => e <= r.a);
+      if (lane === -1) { lane = ends.length; ends.push(r.a + len); } else { ends[lane] = r.a + len; }
+      return { ...r, key, lane, len };
+    });
   }, [parsed]);
   const lanes = Math.max(1, ...drawn.map((r) => r.lane + 1));
+  const total = Math.max(0, ...parsed.map((r) => r.a + (r.outF - r.inF)));
 
   const upd = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   const addRow = () => setRows((rs) => [...rs, {
@@ -65,7 +67,7 @@ export function TimelineTab({ project }: { project: Project }) {
       await api.put(`/api/projects/${project.id}/timeline`, { clips: rows.map((r) => ({
         clip_id: r.clip_id, source_path: r.source_path, source_in: Number(r.source_in),
         source_out: Number(r.source_out), timeline_start: Number(r.timeline_start) })) });
-      setMsg({ kind: "ok", text: "Oś zapisana." });
+      setMsg({ kind: "ok", text: t("tl.saved") });
     } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
   }
 
@@ -79,9 +81,8 @@ export function TimelineTab({ project }: { project: Project }) {
   return (
     <div className="stack">
       <div>
-        <h2>Oś montażowa</h2>
-        <p className="lead">Ułóż zatwierdzone klipy w czasie utworu. Zakres źródła <code>[początek, koniec)</code>: koniec jest
-          wyłączny, a klatki liczone są w FPS osi (24). Ścieżka audio zawsze pochodzi z oryginalnego master WAV.</p>
+        <h2>{t("tl.title")}</h2>
+        <p className="lead">{t("tl.lead")}</p>
       </div>
       {msg && <div className={`alert ${msg.kind}`}>{msg.text}</div>}
 
@@ -89,23 +90,22 @@ export function TimelineTab({ project }: { project: Project }) {
         <div className="timeline-bar" style={{ height: lanes * 30 + 8 }}>
           {drawn.map((r) => (
             <div key={r.key} className="seg" title={`${r.clip_id}: ${tc(r.a)} → ${tc(r.a + r.len)}`}
-              style={{ left: `${total ? (r.a / total) * 100 : 0}%`, width: `${total ? (r.len / total) * 100 : 0}%`,
-                top: 4 + r.lane * 30, height: 24 }}>
+              style={{ left: `${total ? (r.a / total) * 100 : 0}%`, width: `${total ? (r.len / total) * 100 : 0}%`, top: 4 + r.lane * 30, height: 24 }}>
               {r.clip_id}
             </div>
           ))}
         </div>
         <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
-          <span className="hint">Długość osi: {total} kl. · koniec {tc(total)}</span>
-          <span className="hint">{localErrors.length ? `${localErrors.length} do poprawy` : "układ poprawny"}</span>
+          <span className="hint">{t("tl.length", { frames: total, tc: tc(total) })}</span>
+          <span className="hint">{localErrors.length ? t("tl.issues", { n: localErrors.length }) : t("tl.ok")}</span>
         </div>
       </div>
 
       <div className="card" style={{ padding: 0 }}>
         <table>
-          <thead><tr><th>Klip</th><th>Plik źródłowy</th><th className="num">Wejście</th><th className="num">Wyjście (wył.)</th><th className="num">Start na osi</th><th /></tr></thead>
+          <thead><tr><th>{t("tl.colClip")}</th><th>{t("tl.colFile")}</th><th className="num">{t("tl.colIn")}</th><th className="num">{t("tl.colOut")}</th><th className="num">{t("tl.colStart")}</th><th /></tr></thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={6} className="hint" style={{ textAlign: "center", padding: 22 }}>Brak klipów. Dodaj pierwszy.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={6} className="hint" style={{ textAlign: "center", padding: 22 }}>{t("tl.empty")}</td></tr>}
             {rows.map((r, i) => (
               <tr key={i}>
                 <td><input value={r.clip_id} onChange={(e) => upd(i, { clip_id: e.target.value })} style={{ width: 120 }} /></td>
@@ -123,17 +123,17 @@ export function TimelineTab({ project }: { project: Project }) {
       {localErrors.map((e, i) => <div key={i} className="alert warn">{e}</div>)}
 
       <div className="row">
-        <button onClick={addRow}>+ dodaj klip</button>
-        <button className="primary" onClick={save} disabled={localErrors.length > 0}>Zapisz oś</button>
-        <button onClick={() => doExport("csv")}>Eksport CSV</button>
-        <button onClick={() => doExport("json")}>Eksport JSON</button>
+        <button onClick={addRow}>{t("tl.addClip")}</button>
+        <button className="primary" onClick={save} disabled={localErrors.length > 0}>{t("tl.save")}</button>
+        <button onClick={() => doExport("csv")}>{t("tl.exportCsv")}</button>
+        <button onClick={() => doExport("json")}>{t("tl.exportJson")}</button>
       </div>
 
       {exported && (
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
-            <h3 style={{ margin: 0 }}>Eksport</h3>
-            <button onClick={() => navigator.clipboard?.writeText(exported)}>Kopiuj</button>
+            <h3 style={{ margin: 0 }}>{t("tl.export")}</h3>
+            <button onClick={() => navigator.clipboard?.writeText(exported)}>{t("common.copy")}</button>
           </div>
           <pre className="cmd" style={{ marginTop: 10 }}>{exported}</pre>
         </div>
