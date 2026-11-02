@@ -39,8 +39,8 @@ def build_scene_graph(prompt, seed, seconds, width, height, refs, prefix):
     for name, v in (("width", width), ("height", height)):
         if int(v) % 32 or not (256 <= int(v) <= 4096):
             raise SceneError(f"{name}: wielokrotnosc 32 w zakresie 256-4096")
-    if not (1 <= len(refs) <= MAX_IMAGE_REFS):
-        raise SceneError(f"podaj od 1 do {MAX_IMAGE_REFS} referencji obrazow")
+    if len(refs) > MAX_IMAGE_REFS:
+        raise SceneError(f"najwyzej {MAX_IMAGE_REFS} referencji obrazow (0 = bez referencji)")
     for r in refs:
         try:
             safe_name(r)

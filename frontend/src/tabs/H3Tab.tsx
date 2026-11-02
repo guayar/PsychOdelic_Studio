@@ -250,7 +250,7 @@ export function H3Tab({ project }: { project: Project }) {
         <button className="primary" onClick={prepare} disabled={busy || !promptRel}>
           {busy ? t("h3.preparing") : t("h3.prepare")}
         </button>
-        <button className="primary" onClick={sendComfy} disabled={busy || !promptRel || !renderOn || refs.length === 0}>{t("h3.sendComfy")}</button>
+        <button className="primary" onClick={sendComfy} disabled={busy || !promptRel || !renderOn}>{t("h3.sendComfy")}</button>
         <label className="row" style={{ gap: 6 }}><input type="checkbox" style={{ width: "auto" }} checked={renderOn} onChange={(e) => saveRender(e.target.checked)} /><span>{t("h3.renderOn")}</span></label>
       </div>
 

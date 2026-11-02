@@ -92,7 +92,7 @@ def test_graph_has_refs_prompt_and_prefix():
 
 
 @pytest.mark.parametrize("kw", [
-    {"refs": []}, {"refs": ["../x.png"]}, {"width": 1000}, {"prefix": "../bad"}, {"seconds": 99},
+    {"refs": ["../x.png"]}, {"refs": [f"r{i}.png" for i in range(10)]}, {"width": 1000}, {"prefix": "../bad"}, {"seconds": 99},
 ])
 def test_graph_rejects_bad_input(kw):
     args = dict(prompt="x", seed=1, seconds=10, width=1344, height=768, refs=["a.png"], prefix="shots/x")
@@ -143,3 +143,12 @@ def test_comfy_rejected_graph_is_422_with_reason(tmp_path, servers):
     pid = _project(c)
     r = c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body())
     assert r.status_code == 422 and "odrzucil" in r.json()["detail"]
+
+
+def test_scene_without_references_has_no_image_inputs():
+    g, frames = build_scene_graph("Ogrodnik stoi.", 7, 5, 1344, 768, [], "shots/x")
+    assert frames == 124
+    n = g["7"]["inputs"]
+    assert not any(k.startswith("ref_image") or k.startswith("ref_images") for k in n)
+    assert n["ref_image_size"] == "match" and n["prompt"] == "Ogrodnik stoi."
+    assert not any(v.get("class_type") == "LoadImage" for v in g.values())
