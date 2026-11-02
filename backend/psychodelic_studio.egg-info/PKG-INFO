@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: psychodelic-studio
+Version: 0.1.0
+Summary: Lokalne studio do teledyskow: AI Director, H3/LTX adaptery, timeline (M1: fundament)
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.29
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
