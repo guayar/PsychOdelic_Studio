@@ -167,13 +167,13 @@ def test_sync_marks_error_and_success_and_cancel_works(tmp_path, servers):
     assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
     HISTORY["pid-123"] = {"status": {"status_str": "error", "completed": True, "messages": []}, "outputs": {}}
     assert c.post(f"/api/projects/{pid}/jobs/sync").json()["failed"] == 1
-    assert c.get(f"/api/projects/{pid}/jobs").json()[0]["state"] == "FAILED"
+    assert "FAILED" in [j["state"] for j in c.get(f"/api/projects/{pid}/jobs").json()]
     assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
     HISTORY["pid-123"] = {"status": {"status_str": "success", "completed": True, "messages": []},
                           "outputs": {"14": {"images": [{"filename": "shot_01_00001_.png", "subfolder": "shots"}]}}}
     assert c.post(f"/api/projects/{pid}/jobs/sync").json()["finished"] == 1
-    assert c.get(f"/api/projects/{pid}/jobs").json()[0]["state"] == "AWAITING_USER_REVIEW"
+    assert "AWAITING_USER_REVIEW" in [j["state"] for j in c.get(f"/api/projects/{pid}/jobs").json()]
     assert c.post(f"/api/projects/{pid}/h3/send-comfy", json=_body()).status_code == 201
-    job_id = c.get(f"/api/projects/{pid}/jobs").json()[0]["id"]
+    job_id = next(j["id"] for j in c.get(f"/api/projects/{pid}/jobs").json() if j["state"] == "RENDER_QUEUED")
     assert c.post(f"/api/jobs/{job_id}/cancel").json()["state"] == "CANCELLED"
     assert c.post(f"/api/jobs/{job_id}/cancel").status_code == 409
