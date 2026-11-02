@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, type PlanResult, type Project } from "../api";
 import { useI18n } from "../i18n";
 import { DirectorPanel } from "./DirectorPanel";
@@ -12,7 +12,18 @@ const parse = (s: string) => {
 
 export function PlanTab({ project }: { project: Project }) {
   const { t } = useI18n();
-  const [beats, setBeats] = useState<Beat[]>([{ start: "0", end: "5.17", text: "" }, { start: "5.17", end: "15.30", text: "" }]);
+  // Szkic ujec zyje w przegladarce per projekt: nie znika przy przejsciu na inna zakladke.
+  const draftKey = `psy.plan.${project.id}`;
+  const [beats, setBeats] = useState<Beat[]>(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+    } catch { /* brak dostepu do localStorage: zwykly stan w pamieci */ }
+    return [{ start: "0", end: "5.17", text: "" }, { start: "5.17", end: "15.30", text: "" }];
+  });
+  useEffect(() => {
+    try { localStorage.setItem(draftKey, JSON.stringify(beats)); } catch { /* ignoruj */ }
+  }, [beats, draftKey]);
   const [result, setResult] = useState<PlanResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
