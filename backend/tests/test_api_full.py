@@ -162,3 +162,21 @@ def test_project_media_check_reports_existence(client, app):
     assert client.get(f"/api/projects/{pid}/media/check", params={"path": "renders/a.mp4"}).json() == {"exists": True}
     assert client.get(f"/api/projects/{pid}/media/check", params={"path": "renders/b.mp4"}).json() == {"exists": False}
     assert client.get(f"/api/projects/{pid}/media/check", params={"path": "../x.mp4"}).json() == {"exists": False}
+
+
+def test_comfy_input_lists_and_serves_only_inputs(client, app, tmp_path):
+    inp = tmp_path / "input"
+    inp.mkdir()
+    (inp / "oug_hall_new.png").write_bytes(b"png")
+    (inp / "notes.txt").write_text("x", encoding="utf-8")
+    (inp / "sub").mkdir()
+    (inp / "sub" / "deep.png").write_bytes(b"png")
+    r = client.put("/api/settings", json={"comfy_input_dir": str(inp)})
+    assert r.status_code == 200
+    names = [i["name"] for i in client.get("/api/comfy/input").json()["items"]]
+    assert names == ["oug_hall_new.png"]
+    assert client.get("/api/comfy/input", params={"q": "HALL"}).json()["items"][0]["kind"] == "image"
+    assert client.get("/api/comfy/input/file", params={"name": "oug_hall_new.png"}).content == b"png"
+    assert client.get("/api/comfy/input/file", params={"name": "notes.txt"}).status_code == 404
+    assert client.get("/api/comfy/input/file", params={"name": "../secret.png"}).status_code == 404
+    assert client.put("/api/settings", json={"comfy_input_dir": "relative/dir"}).status_code == 422

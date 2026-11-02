@@ -5,6 +5,7 @@ Podmieniamy: prompt, dlugosc (17n+5 klatek), rozmiar, seed, referencje obrazow (
 """
 import copy
 import json
+import re
 import urllib.error
 import urllib.request
 import uuid
@@ -53,7 +54,7 @@ def build_scene_graph(prompt, seed, seconds, width, height, refs, prefix):
     g.pop("5", None)  # stale LoadImage z szablonu; referencje wstawiamy od nowa
     g.pop("6", None)
     node = g["7"]["inputs"]
-    for k in [k for k in node if k.startswith("ref_image_")]:
+    for k in [k for k in node if re.fullmatch(r"ref_image_\d+", k)]:
         del node[k]
     for k, name in enumerate(refs):
         nid = str(100 + k)

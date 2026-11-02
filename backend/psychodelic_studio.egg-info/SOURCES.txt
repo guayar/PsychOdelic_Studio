@@ -3,6 +3,7 @@ pyproject.toml
 backend/psychodelic/__init__.py
 backend/psychodelic/__main__.py
 backend/psychodelic/app.py
+backend/psychodelic/comfy_input.py
 backend/psychodelic/db.py
 backend/psychodelic/doctor.py
 backend/psychodelic/fsio.py

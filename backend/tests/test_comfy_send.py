@@ -86,6 +86,7 @@ def test_graph_has_refs_prompt_and_prefix():
     assert n["prompt"] == "Ogrodnik stoi." and n["length"] == 243 and n["width"] == 1344
     assert n["ref_image_0"] == ["100", 0] and n["ref_image_2"] == ["102", 0] and "ref_image_3" not in n
     assert "5" not in g and "6" not in g
+    assert n["ref_image_size"] == "match", "pole ref_image_size musi zostac w wezle 7"
     assert g["100"]["inputs"]["image"] == "a.png" and g["10"]["inputs"]["noise_seed"] == 7
     assert g["14"]["inputs"]["filename_prefix"] == "shots/x"
 

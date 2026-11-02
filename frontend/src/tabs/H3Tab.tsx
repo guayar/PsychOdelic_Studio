@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { api, type PrepareResult, type Project, type PromptFile } from "../api";
 import { useI18n } from "../i18n";
 import { CommandView } from "./CommandView";
+import { InputPicker } from "./InputPicker";
 
 const MAX_REFS = 9;
 const MAX_MEDIA = 3;
 
-function MediaList({ label, items, setItems, max, placeholder, t }: {
-  label: string; items: string[]; setItems: (f: (xs: string[]) => string[]) => void; max: number; placeholder: string; t: (k: any, p?: any) => string;
+function MediaList({ label, kind, items, setItems, max, placeholder, t }: {
+  label: string; kind: string; items: string[]; setItems: (f: (xs: string[]) => string[]) => void; max: number; placeholder: string; t: (k: any, p?: any) => string;
 }) {
   const [v, setV] = useState("");
   const full = items.length >= max;
@@ -26,6 +27,7 @@ function MediaList({ label, items, setItems, max, placeholder, t }: {
         <input style={{ flex: 1, minWidth: 220 }} value={v} disabled={full} placeholder={full ? t("h3.mediaLimit", { max }) : placeholder}
           onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button onClick={add} disabled={full || !v.trim()}>{t("h3.addMedia")}</button>
+        <InputPicker kinds={[kind]} onPick={(n) => setItems((xs) => (xs.length < max && !xs.includes(n) ? [...xs, n] : xs))} />
       </div>
       {items.map((r, i) => (
         <div className="refitem" key={`${r}-${i}`}>
@@ -185,7 +187,7 @@ export function H3Tab({ project }: { project: Project }) {
           <div className="grid2">
             <label><span>{t("h3.prefix")}</span><input value={prefix} onChange={(e) => setPrefix(e.target.value)} /></label>
             <label><span>{t("h3.seed")}</span><input value={seed} onChange={(e) => setSeed(e.target.value)} /></label>
-            <label><span>{t("h3.cont")}</span><input value={cont} placeholder="ref_v3a_2.mp4" onChange={(e) => setCont(e.target.value)} /></label>
+            <label><span>{t("h3.cont")}</span><input value={cont} placeholder="ref_v3a_2.mp4" onChange={(e) => setCont(e.target.value)} /></label><InputPicker kinds={["video"]} onPick={setCont} />
             <label><span>{t("h3.durs")}</span><input value={durs} onChange={(e) => setDurs(e.target.value)} /><span className="hint">{t("h3.dursHint")}</span></label>
             <label><span>{t("h3.runmode")}</span>
               <select value={runmode} onChange={(e) => setRunmode(e.target.value)}>
@@ -215,6 +217,9 @@ export function H3Tab({ project }: { project: Project }) {
             onChange={(e) => setRefInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRef()} />
           <button onClick={addRef} disabled={refsFull || !refInput.trim()}>{t("h3.addRef")}</button>
         </div>
+        <div className="row" style={{ marginTop: 6 }}>
+          <InputPicker kinds={["image"]} onPick={(n) => { if (refs.length < MAX_REFS && !refs.includes(n)) setRefs((r) => [...r, n]); }} />
+        </div>
         <div>
           {refs.map((r, i) => (
             <div className="refitem" key={`${r}-${i}`}>
@@ -227,15 +232,15 @@ export function H3Tab({ project }: { project: Project }) {
 
       <div className="card">
         <p className="hint" style={{ margin: "0 0 12px" }}>{t("h3.mediaHint")}</p>
-        <MediaList label={t("h3.refVideos")} items={refVideos} setItems={setRefVideos} max={MAX_MEDIA} placeholder={t("h3.mediaPlaceholder")} t={t} />
+        <MediaList kind="video" label={t("h3.refVideos")} items={refVideos} setItems={setRefVideos} max={MAX_MEDIA} placeholder={t("h3.mediaPlaceholder")} t={t} />
         <div style={{ height: 14 }} />
-        <MediaList label={t("h3.refAudios")} items={refAudios} setItems={setRefAudios} max={MAX_MEDIA} placeholder={t("h3.audioPlaceholder")} t={t} />
+        <MediaList kind="audio" label={t("h3.refAudios")} items={refAudios} setItems={setRefAudios} max={MAX_MEDIA} placeholder={t("h3.audioPlaceholder")} t={t} />
       </div>
 
       <details className="card">
         <summary style={{ cursor: "pointer", color: "var(--dim)" }}>{t("h3.control")}</summary>
         <div className="grid3" style={{ marginTop: 12 }}>
-          <label><span>{t("h3.ctrl")}</span><input value={ctrl} onChange={(e) => setCtrl(e.target.value)} placeholder="ref_hall_new.png" /></label>
+          <label><span>{t("h3.ctrl")}</span><input value={ctrl} onChange={(e) => setCtrl(e.target.value)} placeholder="ref_hall_new.png" /></label><InputPicker onPick={setCtrl} />
           <label><span>{t("h3.ctrlFrames")}</span><input value={ctrlFrames} onChange={(e) => setCtrlFrames(e.target.value)} /></label>
           <label><span>{t("h3.ctrlStrength")}</span><input value={ctrlStrength} onChange={(e) => setCtrlStrength(e.target.value)} /></label>
         </div>

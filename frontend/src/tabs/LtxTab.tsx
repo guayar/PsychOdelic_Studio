@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type PrepareResult, type Project, type PromptFile } from "../api";
 import { useI18n } from "../i18n";
+import { InputPicker } from "./InputPicker";
 import { CommandView } from "./CommandView";
 
 export function LtxTab({ project }: { project: Project }) {
@@ -50,9 +51,9 @@ export function LtxTab({ project }: { project: Project }) {
       {msg && <div className={`alert ${msg.kind}`}>{msg.text}</div>}
       <div className="card">
         <div className="grid2">
-          <label><span>{t("ltx.tail")}</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="ref_cu_rose_tight_tail.mp4" /></label>
+          <label><span>{t("ltx.tail")}</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="ref_cu_rose_tight_tail.mp4" /></label><InputPicker kinds={["video"]} onPick={setTail} />
           <label><span>{t("ltx.tailFrames")}</span><input value={tailFrames} onChange={(e) => setTailFrames(e.target.value)} /></label>
-          <label><span>{t("ltx.audio")}</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="ref_lip_rose1.wav" /></label>
+          <label><span>{t("ltx.audio")}</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="ref_lip_rose1.wav" /></label><InputPicker kinds={["audio"]} onPick={setAudio} />
           <label><span>{t("ltx.audioFrames")}</span><input value={audioFrames} onChange={(e) => setAudioFrames(e.target.value)} placeholder="141" /></label>
           <label><span>{t("ltx.prompt")}</span>
             <select value={promptName} onChange={(e) => setPromptName(e.target.value)}>

@@ -19,6 +19,7 @@ from ..orchestrator.gpu import decide_render, read_vram
 from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list, unload as llm_unload
 from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
+from ..comfy_input import default_input_dir, list_inputs, resolve_input_file
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
 
@@ -374,6 +375,7 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
     class SettingsIn(BaseModel):
         director_model: str | None = Field(default=None, max_length=100)
         render_enabled: bool | None = None
+        comfy_input_dir: str | None = Field(default=None, max_length=400)
 
     class DirectorIn(BaseModel):
         brief: str = Field(min_length=1, max_length=4000)
@@ -421,6 +423,21 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
         except (OSError, ValueError) as exc:
             raise HTTPException(503, f"Ollama nie odpowiada ({type(exc).__name__})")
         return {"model": model, "text": text, "note": "Propozycja do przejrzenia. Nic nie zostaje zapisane."}
+
+    def _comfy_input():
+        configured = load_settings(data_dir).get("comfy_input_dir") or ""
+        return Path(configured) if configured else default_input_dir()
+
+    @app.get("/api/comfy/input")
+    def comfy_input_list(q: str = ""):
+        return list_inputs(_comfy_input(), q=q)
+
+    @app.get("/api/comfy/input/file")
+    def comfy_input_file(name: str):
+        target = resolve_input_file(_comfy_input(), name)
+        if target is None:
+            raise HTTPException(404, "brak pliku w ComfyUI/input")
+        return FileResponse(target)
 
     @app.get("/api/system/status")
     def system_status():
