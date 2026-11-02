@@ -99,3 +99,16 @@ def test_plan_gets_previous_scenes_as_context(tmp_path, stub_url):
     sent = SEEN[-1]
     assert "[shot_01] Ogrodnik stoi w ogrodzie." in sent
     assert sent.index("[shot_01]") < sent.index("Opis:") < sent.index("Ogrodnik odwraca")
+
+
+def test_director_gets_rules_for_chosen_target(tmp_path, stub_url):
+    c = _client(tmp_path, stub_url)
+    c.put("/api/settings", json={"director_model": "qwen3.6:27b"})
+    c.post("/api/director/llm-plan", json={"brief": "Ogrodnik.", "target": "scene"})
+    scene = SEEN[-1]
+    assert "RULES FOR A MINIMAX H3 SCENE" in scene and "RULES FOR LTX" not in scene
+    assert "Write every video PROMPT in English" in scene
+    c.post("/api/director/llm-plan", json={"brief": "Ogrodnik.", "target": "ltx"})
+    ltx = SEEN[-1]
+    assert "RULES FOR LTX 2.5 LIPSYNC" in ltx and "RULES FOR A MINIMAX H3 SCENE" not in ltx
+    assert c.post("/api/director/llm-plan", json={"brief": "x", "target": "bad"}).status_code == 422

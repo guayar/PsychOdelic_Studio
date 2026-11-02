@@ -20,6 +20,7 @@ from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate,
 from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..comfy_input import default_input_dir, list_inputs, resolve_input_file
+from ..director.prompt_rules import BASE as BASE_RULES_PREFIX, rules_for
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
 
@@ -380,13 +381,8 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
     class DirectorIn(BaseModel):
         brief: str = Field(min_length=1, max_length=4000)
         project_id: str | None = Field(default=None, max_length=64)
+        target: str = Field(default="scene", pattern="^(scene|ltx)$")
 
-    DIRECTOR_SYSTEM = (
-        "Jestes asystentem rezysera teledysku. Odpowiadasz po polsku. Podziel opis na ujecia (jedno ujecie = jeden "
-        "zwrot akcji albo jeden ruch kamery). Dla kazdego ujecia podaj: czas start-koniec w sekundach, nazwana kamere, "
-        "opis akcji (zdania pozytywne, bez slow 'nie', 'bez', 'brak'), a jesli potrzebne, dzwiek tla. "
-        "Nie pisz dialogow, chyba ze autor je podal w cudzyslowie. Bez wstepow i podsumowan.\n\n"
-    )
 
     @app.get("/api/settings")
     def settings_get():
@@ -414,7 +410,7 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
         if not model:
             raise HTTPException(422, "wybierz model Directora w zakladce Stan systemu")
         context = _previous_scenes(body.project_id) if body.project_id else ""
-        head = DIRECTOR_SYSTEM
+        head = BASE_RULES_PREFIX + rules_for(body.target) + "\n\n"
         if context:
             head += ("Poprzednie sceny (prompty juz zapisane w projekcie; zachowaj ciaglosc postaci, miejsca i rekwizytow):\n"
                      + context + "\n\n")

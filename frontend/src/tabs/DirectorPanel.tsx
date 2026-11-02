@@ -32,7 +32,7 @@ export function DirectorPanel({ projectId }: { projectId: string }) {
   async function ask() {
     setBusy(true); setMsg(null);
     try {
-      const r = await api.post<{ text: string }>("/api/director/llm-plan", { brief, project_id: projectId });
+      const r = await api.post<{ text: string }>("/api/director/llm-plan", { brief, project_id: projectId, target });
       setOut(r.text);
     } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
     finally { setBusy(false); }
@@ -67,7 +67,14 @@ export function DirectorPanel({ projectId }: { projectId: string }) {
       <p className="hint" style={{ margin: "6px 0 10px" }}>{t("dir.lead")}</p>
 
       <textarea rows={3} value={brief} placeholder={t("dir.briefPh")} onChange={(e) => setBrief(e.target.value)} />
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+        <label className="row" style={{ gap: 6 }}>
+          <span className="hint">{t("dir.target")}</span>
+          <select value={target} onChange={(e) => switchTarget(e.target.value as Target)}>
+            <option value="scene">{t("dir.toScene")}</option>
+            <option value="ltx">{t("dir.toLtx")}</option>
+          </select>
+          </label>
         <button className="primary" onClick={ask} disabled={busy || !brief.trim() || !model}>
           {busy ? t("dir.asking") : t("dir.ask")}
         </button>
@@ -76,13 +83,6 @@ export function DirectorPanel({ projectId }: { projectId: string }) {
       {out && <>
         <textarea rows={8} value={out} onChange={(e) => setOut(e.target.value)} style={{ marginTop: 10 }} />
         <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
-          <label className="row" style={{ gap: 6 }}>
-            <span className="hint">{t("dir.target")}</span>
-            <select value={target} onChange={(e) => switchTarget(e.target.value as Target)}>
-              <option value="scene">{t("dir.toScene")}</option>
-              <option value="ltx">{t("dir.toLtx")}</option>
-            </select>
-          </label>
           <label className="row" style={{ gap: 6 }}>
             <span className="hint">{t("dir.name")}</span>
             <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: 180 }} />
