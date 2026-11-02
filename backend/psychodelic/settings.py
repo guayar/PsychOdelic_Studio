@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .fsio import atomic_write_json
 
-DEFAULTS = {"director_model": ""}
+DEFAULTS = {"director_model": "", "render_enabled": False}
 MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
 ROLES = {
     "director": "Qwen (Ollama): planowanie ujec i promptow, bez renderu",
@@ -36,5 +36,7 @@ def save_settings(data_dir, patch):
         if model and (not MODEL_RE.match(model) or ".." in model):
             raise ValueError("nazwa modelu: litery, cyfry, . _ : / - (max 100)")
         current["director_model"] = model
+    if patch.get("render_enabled") is not None:
+        current["render_enabled"] = bool(patch["render_enabled"])
     atomic_write_json(_path(data_dir), current, overwrite=True)
     return current

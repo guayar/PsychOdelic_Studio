@@ -16,7 +16,8 @@ from ..director.tools import ToolRegistry, Tool, READ
 from ..jobs import JobStore
 from ..media.timeline import Clip, TimelineError, export_csv, export_json, validate
 from ..orchestrator.gpu import decide_render, read_vram
-from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list
+from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list, unload as llm_unload
+from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
@@ -33,6 +34,16 @@ class BeatIn(BaseModel):
 
 class PlanIn(BaseModel):
     beats: list[BeatIn]
+
+
+class SceneIn(BaseModel):
+    prompt_name: str = Field(min_length=1, max_length=100)
+    seed: int = Field(default=1234, ge=0, le=2**31 - 1)
+    seconds: float = Field(default=10.0, gt=0, le=14.4)
+    width: int = Field(default=1344, ge=256, le=4096)
+    height: int = Field(default=768, ge=256, le=4096)
+    refs: list[str] = Field(default_factory=list, max_length=9)
+    prefix: str = Field(min_length=1, max_length=80)
 
 
 class H3In(BaseModel):
@@ -143,6 +154,49 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
             job = jobs.create(pid, "h3_extend", key, {"command": cmd, "input": body.model_dump()})
             job = _prepared(job)
             return {"job": job, "command": cmd}
+
+    @app.post("/api/projects/{pid}/h3/send-comfy", status_code=201)
+    def h3_send_comfy(pid: str, body: SceneIn):
+        settings = load_settings(data_dir)
+        if not settings.get("render_enabled"):
+            raise HTTPException(403, "render wylaczony: wlacz go w zakladce H3 (zgoda na generowanie na GPU)")
+        with lock:
+            root = _root(pid)
+            try:
+                prompt_path = resolve_within(root, f"prompts/{safe_name(body.prompt_name)}.txt")
+            except UnsafePath as exc:
+                raise HTTPException(422, str(exc))
+            if not prompt_path.is_file():
+                raise HTTPException(404, "brak promptu")
+            text = prompt_path.read_text(encoding="utf-8").strip()
+            try:
+                graph, frames = build_scene_graph(text, body.seed, body.seconds, body.width, body.height,
+                                                  body.refs, body.prefix)
+            except SceneError as exc:
+                raise HTTPException(422, str(exc))
+            key = f"scene:{uuid.uuid4()}"
+            job = jobs.create(pid, "h3_scene", key, {"prompt": text, "prefix": body.prefix, "refs": body.refs,
+                                                     "frames": frames, "seed": body.seed})
+            job = _prepared(job)
+            director = settings.get("director_model") or ""
+            if director:
+                jobs.transition(job["id"], "DIRECTOR_UNLOADING")
+                try:
+                    llm_unload(director, base_url=llm_url or "http://127.0.0.1:11434")
+                except (OSError, ValueError):
+                    pass  # Ollama nie odpowiada: model nie jest zaladowany w VRAM
+            jobs.transition(job["id"], "GPU_FREE_VERIFIED")
+            try:
+                prompt_id = comfy_submit(comfy_url, graph)
+            except SceneError as exc:
+                jobs.transition(job["id"], "CANCELLED", error=str(exc)[:300])
+                raise HTTPException(422, str(exc))
+            except (OSError, ValueError) as exc:
+                jobs.transition(job["id"], "CANCELLED", error=f"ComfyUI: {type(exc).__name__}")
+                raise HTTPException(503, "ComfyUI nie odpowiada. Uruchom ComfyUI i sprobuj ponownie.")
+            jobs.set_prompt_id(job["id"], prompt_id)
+            job = jobs.transition(job["id"], "RENDER_QUEUED")
+            return {"job": job, "prompt_id": prompt_id, "frames": frames}
 
     @app.post("/api/projects/{pid}/ltx/prepare", status_code=201)
     def ltx_prepare(pid: str, body: LtxIn):
@@ -319,6 +373,7 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
 
     class SettingsIn(BaseModel):
         director_model: str | None = Field(default=None, max_length=100)
+        render_enabled: bool | None = None
 
     class DirectorIn(BaseModel):
         brief: str = Field(min_length=1, max_length=4000)

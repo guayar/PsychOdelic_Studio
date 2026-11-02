@@ -82,6 +82,32 @@ export function H3Tab({ project }: { project: Project }) {
   const stem = promptName.replace(/\.txt$/, "");
   const promptRel = stem ? `prompts/${stem}.txt` : "";
 
+  const [renderOn, setRenderOn] = useState(false);
+  useEffect(() => {
+    api.get<{ settings: { render_enabled: boolean } }>("/api/settings")
+      .then((r) => setRenderOn(!!r.settings.render_enabled)).catch(() => {});
+  }, []);
+
+  async function saveRender(v: boolean) {
+    if (v && !window.confirm(t("h3.renderConfirm"))) return;
+    try {
+      await api.put("/api/settings", { render_enabled: v });
+      setRenderOn(v); setMsg(null);
+    } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
+  }
+
+  async function sendComfy() {
+    setBusy(true); setMsg(null);
+    try {
+      if (dirty) await savePrompt();
+      const seconds = Number(durs.split(",")[0]) || 10;
+      const res = await api.post<{ prompt_id: string; frames: number }>(`/api/projects/${project.id}/h3/send-comfy`, {
+        prompt_name: stem, seed: Number(seed), seconds, width: 1344, height: 768, refs, prefix });
+      setMsg({ kind: "ok", text: t("h3.sentComfy", { id: res.prompt_id, frames: res.frames }) });
+    } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
+    finally { setBusy(false); }
+  }
+
   async function savePrompt() {
     if (!stem) return;
     const r = await api.put<{ rel_path: string }>(`/api/projects/${project.id}/prompts/${stem}`, { content: promptText });
@@ -219,6 +245,8 @@ export function H3Tab({ project }: { project: Project }) {
         <button className="primary" onClick={prepare} disabled={busy || !promptRel}>
           {busy ? t("h3.preparing") : t("h3.prepare")}
         </button>
+        <button className="primary" onClick={sendComfy} disabled={busy || !promptRel || !renderOn || refs.length === 0}>{t("h3.sendComfy")}</button>
+        <label className="row" style={{ gap: 6 }}><input type="checkbox" style={{ width: "auto" }} checked={renderOn} onChange={(e) => saveRender(e.target.checked)} /><span>{t("h3.renderOn")}</span></label>
       </div>
 
       {prepared && (

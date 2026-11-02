@@ -13,6 +13,7 @@ backend/psychodelic/server.py
 backend/psychodelic/settings.py
 backend/psychodelic/adapters/__init__.py
 backend/psychodelic/adapters/capture.py
+backend/psychodelic/adapters/comfy_scene.py
 backend/psychodelic/adapters/h3.py
 backend/psychodelic/adapters/ltx.py
 backend/psychodelic/api/__init__.py
@@ -44,6 +45,7 @@ backend/tests/test_adapters.py
 backend/tests/test_api.py
 backend/tests/test_api_full.py
 backend/tests/test_capture.py
+backend/tests/test_comfy_send.py
 backend/tests/test_db.py
 backend/tests/test_director_llm.py
 backend/tests/test_doctor.py

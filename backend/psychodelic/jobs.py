@@ -69,6 +69,10 @@ class JobStore:
             self._audit(job_id, project_id, "job_created", {"kind": kind})
         return self.get(job_id)
 
+    def set_prompt_id(self, job_id, prompt_id):
+        with transaction(self.conn):
+            self.conn.execute("UPDATE jobs SET prompt_id = ?, updated_at = ? WHERE id = ?", (prompt_id, utc_now(), job_id))
+
     def get(self, job_id):
         row = self.conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return dict(row) if row else None

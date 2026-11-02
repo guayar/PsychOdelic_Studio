@@ -56,3 +56,12 @@ def generate(model, prompt, base_url="http://127.0.0.1:11434", timeout=300.0):
                                  headers={"Content-Type": "application/json"}, method="POST")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return str(json.load(resp).get("response", "")).strip()
+
+
+def unload(model, base_url="http://127.0.0.1:11434", timeout=30.0):
+    """Zwalnia model z VRAM w Ollamie (keep_alive=0). Model wraca przy nastepnym uzyciu."""
+    body = json.dumps({"model": model, "keep_alive": 0}).encode("utf-8")
+    req = urllib.request.Request(f"{_local(base_url)}/api/generate", data=body,
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        resp.read()
