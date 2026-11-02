@@ -21,7 +21,7 @@ def main(argv=None):
     ap.add_argument("--object-info", help="zapisany plik object_info.json z ComfyUI (zamiast serwera)")
     ap.add_argument("--yes", action="store_true", help="nie pytaj o kopiowanie")
     ap.add_argument("--dry-run", action="store_true", help="tylko pokaz plan")
-    ap.add_argument("--ltx-workflow", help="plik workflow LTX z produkcji (np. oug_ltx_director_api.json); kopiowany bez zmian")
+    ap.add_argument("--ltx-workflow", help="plik workflow LTX z produkcji (np. nazwa_ltx_director_api.json); kopiowany bez zmian")
     ap.add_argument("--report", default=str(STUDIO_ROOT / "install_report.json"))
     args = ap.parse_args(argv)
 

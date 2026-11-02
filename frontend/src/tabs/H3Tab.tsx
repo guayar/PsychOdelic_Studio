@@ -11,7 +11,7 @@ export function H3Tab({ project }: { project: Project }) {
   const [promptName, setPromptName] = useState("");
   const [promptText, setPromptText] = useState("");
   const [dirty, setDirty] = useState(false);
-  const [prefix, setPrefix] = useState("OUG/v3b_1");
+  const [prefix, setPrefix] = useState("shots/shot_01");
   const [seed, setSeed] = useState("1234");
   const [refs, setRefs] = useState<string[]>([]);
   const [refInput, setRefInput] = useState("");
@@ -124,7 +124,7 @@ export function H3Tab({ project }: { project: Project }) {
           <div className="grid2">
             <label><span>{t("h3.prefix")}</span><input value={prefix} onChange={(e) => setPrefix(e.target.value)} /></label>
             <label><span>{t("h3.seed")}</span><input value={seed} onChange={(e) => setSeed(e.target.value)} /></label>
-            <label><span>{t("h3.cont")}</span><input value={cont} placeholder="oug_v3a_2.mp4" onChange={(e) => setCont(e.target.value)} /></label>
+            <label><span>{t("h3.cont")}</span><input value={cont} placeholder="ref_v3a_2.mp4" onChange={(e) => setCont(e.target.value)} /></label>
             <label><span>{t("h3.durs")}</span><input value={durs} onChange={(e) => setDurs(e.target.value)} /><span className="hint">{t("h3.dursHint")}</span></label>
             <label><span>{t("h3.runmode")}</span>
               <select value={runmode} onChange={(e) => setRunmode(e.target.value)}>
@@ -166,7 +166,7 @@ export function H3Tab({ project }: { project: Project }) {
       <details className="card">
         <summary style={{ cursor: "pointer", color: "var(--dim)" }}>{t("h3.control")}</summary>
         <div className="grid3" style={{ marginTop: 12 }}>
-          <label><span>{t("h3.ctrl")}</span><input value={ctrl} onChange={(e) => setCtrl(e.target.value)} placeholder="oug_hall_new.png" /></label>
+          <label><span>{t("h3.ctrl")}</span><input value={ctrl} onChange={(e) => setCtrl(e.target.value)} placeholder="ref_hall_new.png" /></label>
           <label><span>{t("h3.ctrlFrames")}</span><input value={ctrlFrames} onChange={(e) => setCtrlFrames(e.target.value)} /></label>
           <label><span>{t("h3.ctrlStrength")}</span><input value={ctrlStrength} onChange={(e) => setCtrlStrength(e.target.value)} /></label>
         </div>

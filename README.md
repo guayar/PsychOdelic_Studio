@@ -3,7 +3,7 @@
 Lokalne studio do teledysków (AI Director, adaptery H3/LTX, timeline). **Status: M0 częściowo, M1 fundament.** Szczegóły: [docs/STATUS.md](docs/STATUS.md).
 
 ## Zasady
-- Działający pipeline „Once Upon a Garden” ma pierwszeństwo. Studio go **nie zastępuje** i **nie zmienia** jego skryptów bez zgody.
+- Studio jest uniwersalne: nie zakłada żadnego konkretnego projektu. Istniejące pipeline'y użytkownika (skrypty, workflowy) nie są zmieniane bez zgody.
 - Aplikacja słucha tylko na `127.0.0.1`.
 - Nie wykonuj `git push` do repo użytkownika bez zgody.
 - Każda funkcja jest opisana jednym z trzech statusów: `POTWIERDZONE_TESTEM`, `TECHNICZNIE_MOZLIWE_NIEZWERYFIKOWANE`, `NIEDOSTEPNE_LUB_WYMAGA_ZMIANY`.

@@ -49,7 +49,7 @@ export function ReviewTab({ project }: { project: Project }) {
       <div className="card">
         <h3>{t("review.add")}</h3>
         <div className="grid3">
-          <label><span>{t("review.path")}</span><input value={path} placeholder="renders/OUG_v3b_1_new_only.mp4" onChange={(e) => setPath(e.target.value)} /></label>
+          <label><span>{t("review.path")}</span><input value={path} placeholder="renders/shot_01_final.mp4" onChange={(e) => setPath(e.target.value)} /></label>
           <label><span>{t("review.kind")}</span>
             <select value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number])}>
               {KINDS.map((k) => <option key={k} value={k}>{t(kindKey(k) as "kind.raw")}</option>)}

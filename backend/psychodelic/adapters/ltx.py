@@ -1,7 +1,7 @@
 """Adapter LTX lipsync: buduje wywolanie produkcyjnego `_docs/gen_ltx_lip.py` (argumenty jak w jego usage).
 
 Status: POTWIERDZONE_TESTEM dla budowy komendy. NIEZWERYFIKOWANE: zgodnosc z prawdziwym skryptem
-oraz istnienie bazowego grafu `~/ComfyUI/user/default/workflows/oug_ltx_director_api.json`.
+oraz istnienie bazowego grafu `~/ComfyUI/user/default/workflows/<plik_ltx>.json`.
 Siatka dlugosci LTX (8n+1) jest liczona przez produkcyjny skrypt; tu tylko sprawdzamy wejscia.
 """
 from dataclasses import dataclass

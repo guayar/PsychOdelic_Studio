@@ -35,15 +35,15 @@ def test_capture_produces_graph_without_server(tmp_path):
     root = make_project(tmp_path, STUB)
     oi = tmp_path / "object_info.json"
     oi.write_text(json.dumps({"MiniMaxH3Extender": {}, "UNETLoader": {}}), encoding="utf-8")
-    cmd = build_command(ExtenderSpec(project_root=str(root), prefix="OUG/v3b_1", seed=1234,
-                                     prompt_files=["ext_test/s1.txt"], refs=["oug_gsheet2.png"], durs=[7.5]))
+    cmd = build_command(ExtenderSpec(project_root=str(root), prefix="shots/v3b_1", seed=1234,
+                                     prompt_files=["ext_test/s1.txt"], refs=["ref_gsheet2.png"], durs=[7.5]))
     res = capture.capture(cmd, oi, tmp_path / "graph.json")
     assert res["status"] == "CAPTURED", res
     graph = json.loads(Path(res["graph_path"]).read_text(encoding="utf-8"))["prompt"]
     inputs = graph["1"]["inputs"]
-    assert inputs["prefix"] == "OUG/v3b_1" and inputs["seed"] == 1234
+    assert inputs["prefix"] == "shots/v3b_1" and inputs["seed"] == 1234
     assert inputs["prompt"] == "Gardener stands still."
-    assert inputs["refs"] == "oug_gsheet2.png"
+    assert inputs["refs"] == "ref_gsheet2.png"
     assert inputs["known_nodes"] == 2
     assert capture.summarize(res["graph_path"])["classes"] == {"MiniMaxH3Extender": 1}
 
@@ -52,7 +52,7 @@ def test_blocked_connection_is_reported_not_sent(tmp_path):
     root = make_project(tmp_path, LEAK)
     oi = tmp_path / "object_info.json"
     oi.write_text("{}", encoding="utf-8")
-    cmd = build_command(ExtenderSpec(project_root=str(root), prefix="OUG/x", seed=1,
+    cmd = build_command(ExtenderSpec(project_root=str(root), prefix="shots/x", seed=1,
                                      prompt_files=["ext_test/s1.txt"]))
     res = capture.capture(cmd, oi, tmp_path / "graph.json")
     assert res["status"] == "NOT_CAPTURED"

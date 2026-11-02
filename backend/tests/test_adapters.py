@@ -12,17 +12,17 @@ def root(tmp_path):
 
 
 def spec(root, **kw):
-    base = dict(project_root=str(root), prefix="OUG/v3b_1", seed=1234, prompt_files=["ext_test/s1.txt"])
+    base = dict(project_root=str(root), prefix="shots/v3b_1", seed=1234, prompt_files=["ext_test/s1.txt"])
     base.update(kw)
     return h3.ExtenderSpec(**base)
 
 
 def test_h3_argv_matches_production_usage(root):
-    cmd = h3.build_command(spec(root, refs=["oug_gsheet2.png"], durs=[7.5], cont="oug_v3a_2.mp4"))
-    assert cmd["argv"] == ["python3", "-u", "_docs/gen_extender_refine.py", "0", "OUG/v3b_1", "1234",
+    cmd = h3.build_command(spec(root, refs=["ref_gsheet2.png"], durs=[7.5], cont="ref_v3a_2.mp4"))
+    assert cmd["argv"] == ["python3", "-u", "_docs/gen_extender_refine.py", "0", "shots/v3b_1", "1234",
                            "ext_test/s1.txt"]
-    assert cmd["env"]["REFS"] == "oug_gsheet2.png"
-    assert cmd["env"]["CONT"] == "oug_v3a_2.mp4"
+    assert cmd["env"]["REFS"] == "ref_gsheet2.png"
+    assert cmd["env"]["CONT"] == "ref_v3a_2.mp4"
     assert cmd["env"]["DURS"] == "7.5"
     assert cmd["env"]["FULLRES"] == "1"
     assert cmd["cwd"] == str(root)
@@ -34,7 +34,7 @@ def test_h3_refine_flag_and_no_shell(root):
     assert all(isinstance(a, str) for a in cmd["argv"])
 
 
-@pytest.mark.parametrize("bad_prefix", ["../x", "OUG/a b", "x", "OUG/" + "a" * 70])
+@pytest.mark.parametrize("bad_prefix", ["../x", "shots/a b", "/abs", "shots/" + "a" * 70])
 def test_h3_prefix_rejected(root, bad_prefix):
     with pytest.raises(h3.H3ValidationError):
         h3.build_command(spec(root, prefix=bad_prefix))
@@ -71,9 +71,9 @@ def test_h3_bad_unsafe_names_rejected(root):
 def test_ltx_argv(root):
     (root / "lip").mkdir()
     (root / "lip" / "p.txt").write_text("x", encoding="utf-8")
-    cmd = ltx.build_command(ltx.LtxSpec(project_root=str(root), tail="oug_tail.mp4", tail_frames=24,
-                                        audio="oug_lip.wav", audio_frames=141, prompt_file="lip/p.txt",
-                                        seed=282, prefix="OUG/lip_r1"))
+    cmd = ltx.build_command(ltx.LtxSpec(project_root=str(root), tail="ref_tail.mp4", tail_frames=24,
+                                        audio="ref_lip.wav", audio_frames=141, prompt_file="lip/p.txt",
+                                        seed=282, prefix="shots/lip_r1"))
     assert cmd["argv"][:3] == ["python3", "-u", "_docs/gen_ltx_lip.py"]
     assert "--audio_frames" in cmd["argv"] and "141" in cmd["argv"]
     assert "--prompt_file" in cmd["argv"] and "lip/p.txt" in cmd["argv"]
@@ -82,4 +82,4 @@ def test_ltx_argv(root):
 def test_ltx_prompt_outside_rejected(root):
     with pytest.raises(h3.H3ValidationError):
         ltx.build_command(ltx.LtxSpec(project_root=str(root), tail="a.mp4", tail_frames=24, audio="a.wav",
-                                      audio_frames=10, prompt_file="../x", seed=1, prefix="OUG/x"))
+                                      audio_frames=10, prompt_file="../x", seed=1, prefix="shots/x"))

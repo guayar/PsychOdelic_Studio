@@ -7,11 +7,11 @@ def test_health(client):
 
 
 def test_project_create_list_get(client, app):
-    r = client.post("/api/projects", json={"name": "Once Upon a Garden"})
+    r = client.post("/api/projects", json={"name": "Mój projekt"})
     assert r.status_code == 201
     pid = r.json()["id"]
     assert [p["id"] for p in client.get("/api/projects").json()] == [pid]
-    assert client.get(f"/api/projects/{pid}").json()["name"] == "Once Upon a Garden"
+    assert client.get(f"/api/projects/{pid}").json()["name"] == "Mój projekt"
     assert client.get("/api/projects/nieistnieje").status_code == 404
 
 

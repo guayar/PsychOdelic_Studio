@@ -22,7 +22,7 @@ SCRIPT_REL = "_docs/gen_extender_refine.py"
 MAX_IMAGE_REFS = 9
 MAX_DURATION_S = 14.4
 ALLOWED_ENV = {"REFS", "CONT", "FULLRES", "DURS", "RUNMODE", "VALIDATED", "CTRL", "CTRL_FRAMES", "CTRL_STRENGTH"}
-PREFIX_RE = re.compile(r"^OUG/[A-Za-z0-9_\-]{1,64}$")
+PREFIX_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_\-/]{0,63}$")
 
 
 class H3ValidationError(ValueError):
@@ -32,7 +32,7 @@ class H3ValidationError(ValueError):
 @dataclass
 class ExtenderSpec:
     project_root: str
-    prefix: str                  # np. "OUG/v3b_1" (wynik: OUG_v3b_1.mp4 w output ComfyUI)
+    prefix: str                  # np. "shots/shot_01" (wynik: shots_shot_01*.mp4 w output ComfyUI)
     seed: int
     prompt_files: list           # sciezki wzgledne wzgledem project_root
     refs: list = field(default_factory=list)       # nazwy plikow w ComfyUI input (nie sciezki)
@@ -59,7 +59,7 @@ def build_command(spec: ExtenderSpec):
     if not root.is_dir():
         raise H3ValidationError("katalog projektu nie istnieje")
     if not PREFIX_RE.match(spec.prefix or ""):
-        raise H3ValidationError("prefix musi miec postac OUG/<nazwa> (litery, cyfry, _ -)")
+        raise H3ValidationError("prefix: litery, cyfry, _ - / (bez dwu kropek i spacji), max 64 znaki")
     if not (0 <= int(spec.seed) <= 2**31 - 1):
         raise H3ValidationError("seed poza zakresem")
     if not spec.prompt_files:

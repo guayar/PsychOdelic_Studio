@@ -13,7 +13,7 @@ export function LtxTab({ project }: { project: Project }) {
   const [audioFrames, setAudioFrames] = useState("");
   const [audioShift, setAudioShift] = useState("0");
   const [seed, setSeed] = useState("1");
-  const [prefix, setPrefix] = useState("OUG/lip_1");
+  const [prefix, setPrefix] = useState("shots/lip_01");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [prepared, setPrepared] = useState<{ command: PrepareResult["command"] } | null>(null);
@@ -50,9 +50,9 @@ export function LtxTab({ project }: { project: Project }) {
       {msg && <div className={`alert ${msg.kind}`}>{msg.text}</div>}
       <div className="card">
         <div className="grid2">
-          <label><span>{t("ltx.tail")}</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="oug_cu_rose_tight_tail.mp4" /></label>
+          <label><span>{t("ltx.tail")}</span><input value={tail} onChange={(e) => setTail(e.target.value)} placeholder="ref_cu_rose_tight_tail.mp4" /></label>
           <label><span>{t("ltx.tailFrames")}</span><input value={tailFrames} onChange={(e) => setTailFrames(e.target.value)} /></label>
-          <label><span>{t("ltx.audio")}</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="oug_lip_rose1.wav" /></label>
+          <label><span>{t("ltx.audio")}</span><input value={audio} onChange={(e) => setAudio(e.target.value)} placeholder="ref_lip_rose1.wav" /></label>
           <label><span>{t("ltx.audioFrames")}</span><input value={audioFrames} onChange={(e) => setAudioFrames(e.target.value)} placeholder="141" /></label>
           <label><span>{t("ltx.prompt")}</span>
             <select value={promptName} onChange={(e) => setPromptName(e.target.value)}>

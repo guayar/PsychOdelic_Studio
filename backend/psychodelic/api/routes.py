@@ -54,7 +54,7 @@ class LtxIn(BaseModel):
     audio_frames: int
     prompt_file: str
     seed: int = 1
-    prefix: str = "OUG/ltx_lip"
+    prefix: str = "shots/ltx_lip_01"
     audio_shift: int = 0
 
 

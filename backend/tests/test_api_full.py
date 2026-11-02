@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def make_project(client, name="Once Upon a Garden"):
+def make_project(client, name="Mój projekt"):
     return client.post("/api/projects", json={"name": name}).json()["id"]
 
 
@@ -16,19 +16,19 @@ def test_h3_prepare_returns_command_and_state(client, app):
     pid = make_project(client)
     rel = make_prompt(client, pid, app)
     r = client.post(f"/api/projects/{pid}/h3/prepare", json={
-        "prefix": "OUG/v3b_1", "seed": 1234, "prompt_files": [rel], "refs": ["oug_gsheet2.png"],
-        "durs": [7.5], "cont": "oug_v3a_2.mp4"})
+        "prefix": "shots/v3b_1", "seed": 1234, "prompt_files": [rel], "refs": ["ref_gsheet2.png"],
+        "durs": [7.5], "cont": "ref_v3a_2.mp4"})
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["job"]["state"] == "PREPARED"
     assert body["command"]["argv"][2] == "_docs/gen_extender_refine.py"
-    assert body["command"]["env"]["CONT"] == "oug_v3a_2.mp4"
+    assert body["command"]["env"]["CONT"] == "ref_v3a_2.mp4"
 
 
 def test_h3_prepare_idempotent_no_double_transition(client, app):
     pid = make_project(client)
     rel = make_prompt(client, pid, app)
-    body = {"prefix": "OUG/x1", "seed": 1, "prompt_files": [rel]}
+    body = {"prefix": "shots/x1", "seed": 1, "prompt_files": [rel]}
     a = client.post(f"/api/projects/{pid}/h3/prepare", json=body).json()["job"]
     b = client.post(f"/api/projects/{pid}/h3/prepare", json=body).json()["job"]
     assert a["id"] == b["id"] and b["state"] == "PREPARED"
@@ -37,7 +37,7 @@ def test_h3_prepare_idempotent_no_double_transition(client, app):
 def test_h3_prepare_rejects_prompt_outside_project(client, app):
     pid = make_project(client)
     r = client.post(f"/api/projects/{pid}/h3/prepare", json={
-        "prefix": "OUG/x", "seed": 1, "prompt_files": ["../../etc/passwd"]})
+        "prefix": "shots/x", "seed": 1, "prompt_files": ["../../etc/passwd"]})
     assert r.status_code == 422
 
 
@@ -45,7 +45,7 @@ def test_h3_prepare_rejects_ten_refs(client, app):
     pid = make_project(client)
     rel = make_prompt(client, pid, app)
     r = client.post(f"/api/projects/{pid}/h3/prepare", json={
-        "prefix": "OUG/x", "seed": 1, "prompt_files": [rel], "refs": [f"r{i}.png" for i in range(10)]})
+        "prefix": "shots/x", "seed": 1, "prompt_files": [rel], "refs": [f"r{i}.png" for i in range(10)]})
     assert r.status_code == 422
 
 
