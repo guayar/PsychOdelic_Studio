@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Project, type Variant } from "../api";
 import { useI18n } from "../i18n";
 import { kindKey } from "../format";
@@ -6,18 +6,40 @@ import { InputPicker } from "./InputPicker";
 
 const KINDS = ["new_only", "cumulative", "raw", "preview", "audio_slice", "other"] as const;
 
-// Podglad wyniku: wideo z kontrolkami, obraz lub audio. Plik czytany z katalogu projektu (media endpoint).
+// Podglad wyniku: obraz, wideo albo audio. Sterowanie: stop, -5 s, odtwarzaj/pauza, +5 s (kontrolki natywne zostaja).
 function MediaPreview({ projectId, path, autoPlay }: { projectId: string; path: string; autoPlay?: boolean }) {
+  const { t } = useI18n();
+  const el = useRef<HTMLMediaElement>(null);
   if (!path) return null;
   const src = `/api/projects/${projectId}/media?path=${encodeURIComponent(path)}`;
   const ext = (path.toLowerCase().split(".").pop() ?? "");
-  if (["png", "jpg", "jpeg", "webp"].includes(ext))
-    return <img src={src} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />;
-  if (["mp4", "mov", "webm"].includes(ext))
-    return <video src={src} controls autoPlay={autoPlay} preload="metadata" playsInline style={{ width: "100%", maxHeight: 360, background: "#000", borderRadius: 8, marginTop: 8 }} />;
-  if (["wav", "mp3", "flac"].includes(ext))
-    return <audio src={src} controls autoPlay={autoPlay} preload="metadata" style={{ width: "100%", marginTop: 8 }} />;
-  return null;
+  const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+  const isVideo = ["mp4", "mov", "webm"].includes(ext);
+  const isAudio = ["wav", "mp3", "flac"].includes(ext);
+  if (isImage) return <img src={src} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />;
+  if (!isVideo && !isAudio) return null;
+  const m = () => el.current;
+  const stop = () => { const x = m(); if (x) { x.pause(); x.currentTime = 0; } };
+  const jump = (d: number) => { const x = m(); if (x) x.currentTime = Math.max(0, Math.min(x.duration || 0, x.currentTime + d)); };
+  const toggle = () => { const x = m(); if (x) { if (x.paused) x.play().catch(() => {}); else x.pause(); } };
+  const mediaProps = { ref: el as React.RefObject<HTMLVideoElement>, src, controls: true, autoPlay, preload: "metadata" as const };
+  return (
+    <div>
+      {isVideo
+        ? <video {...mediaProps} playsInline style={{ width: "100%", maxHeight: 360, background: "#000", borderRadius: 8, marginTop: 8 }} />
+        : <audio {...mediaProps} style={{ width: "100%", marginTop: 8 }} />}
+      <div className="row" style={{ marginTop: 8, gap: 6 }}>
+        <button className="ghost" onClick={stop} title={t("player.stop")}>⏹ {t("player.stop")}</button>
+        <button className="ghost" onClick={() => jump(-5)} title={t("player.back5")}>⏪ −5 s</button>
+        <button className="primary" onClick={toggle} title={t("player.toggle")}>⏯</button>
+        <button className="ghost" onClick={() => jump(5)} title={t("player.fwd5")}>⏩ +5 s</button>
+        {isVideo && <>
+          <button className="ghost" onClick={() => jump(-1 / 24)} title="-1 klatka (1/24 s)">◀ −1 kl.</button>
+          <button className="ghost" onClick={() => jump(1 / 24)} title="+1 klatka (1/24 s)">+1 kl. ▶</button>
+        </>}
+      </div>
+    </div>
+  );
 }
 
 export function ReviewTab({ project }: { project: Project }) {
