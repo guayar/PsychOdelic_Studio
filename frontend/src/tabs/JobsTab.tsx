@@ -10,7 +10,7 @@ export function JobsTab({ project }: { project: Project }) {
   const [events, setEvents] = useState<JobEvent[]>([]);
 
   const load = () => api.get<Job[]>(`/api/projects/${project.id}/jobs`).then(setJobs).catch(() => setJobs([]));
-  useEffect(() => { load(); setOpen(null); const timer = setInterval(load, 8000); return () => clearInterval(timer); }, [project.id]);
+  useEffect(() => { load(); setOpen(null); const timer = setInterval(() => { if (!document.hidden) load(); }, 15000); return () => clearInterval(timer); }, [project.id]);
   useEffect(() => { if (open) api.get<JobEvent[]>(`/api/jobs/${open}/events`).then(setEvents); }, [open]);
 
   return (

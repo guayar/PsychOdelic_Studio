@@ -38,7 +38,7 @@ export function App() {
   useEffect(() => {
     loadProjects().catch((e: Error) => setError(e.message));
     loadStatus();
-    const timer = setInterval(loadStatus, 15000);
+    const timer = setInterval(() => { if (!document.hidden) loadStatus(); }, 60000);
     return () => clearInterval(timer);
   }, [loadProjects, loadStatus]);
 
