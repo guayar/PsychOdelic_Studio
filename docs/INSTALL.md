@@ -15,7 +15,7 @@ git clone <repo studia> ~/PsychOdelic-Studio      # albo rozpakuj paczkę/bundle
 cd ~/PsychOdelic-Studio
 ./install.sh --comfy ~/ComfyUI                     # z potwierdzeniem kopiowania
 # na czystym ComfyUI bez pytań:  ./install.sh --comfy ~/ComfyUI --yes
-# z workflow LTX z produkcji:    ./install.sh --comfy ~/ComfyUI --ltx-workflow ~/ComfyUI/user/default/workflows/oug_ltx_director_api.json
+# z workflow LTX z produkcji:    ./install.sh --comfy ~/ComfyUI --ltx-workflow ~/ComfyUI/user/default/workflows/<twoj_workflow_ltx>.json
 ```
 Po instalacji: ikonka **PsychOdelic Studio** w menu albo `./start.sh`. Studio otworzy się na `http://127.0.0.1:8765`.
 
