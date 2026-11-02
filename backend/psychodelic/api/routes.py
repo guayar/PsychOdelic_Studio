@@ -20,6 +20,7 @@ from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate,
 from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..comfy_input import default_input_dir, list_inputs, resolve_input_file
+from ..fs_browse import import_to_input, list_dir, resolve_file
 from ..director.prompt_rules import BASE as BASE_RULES_PREFIX, rules_for
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
@@ -434,6 +435,37 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
         if target is None:
             raise HTTPException(404, "brak pliku w ComfyUI/input")
         return FileResponse(target)
+
+    @app.get("/api/fs/list")
+    def fs_list(path: str = "", q: str = ""):
+        target = path or str(_comfy_input())
+        try:
+            return list_dir(target, q=q)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except FileNotFoundError as exc:
+            raise HTTPException(404, str(exc))
+        except PermissionError:
+            raise HTTPException(403, "brak dostepu do katalogu")
+
+    @app.get("/api/fs/file")
+    def fs_file(path: str):
+        target = resolve_file(path)
+        if target is None:
+            raise HTTPException(404, "brak pliku")
+        return FileResponse(target)
+
+    class ImportIn(BaseModel):
+        path: str = Field(min_length=1, max_length=2000)
+
+    @app.post("/api/fs/import", status_code=201)
+    def fs_import(body: ImportIn):
+        try:
+            return {"name": import_to_input(body.path, _comfy_input())}
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except OSError as exc:
+            raise HTTPException(500, f"nie udalo sie skopiowac: {exc}")
 
     @app.get("/api/system/status")
     def system_status():
