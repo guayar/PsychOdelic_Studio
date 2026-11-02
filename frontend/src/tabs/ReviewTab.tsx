@@ -12,7 +12,7 @@ function MediaPreview({ projectId, path, autoPlay }: { projectId: string; path: 
   const el = useRef<HTMLMediaElement>(null);
   if (!path) return null;
   const src = `/api/projects/${projectId}/media?path=${encodeURIComponent(path)}`;
-  const ext = (path.toLowerCase().split(".").pop() ?? "");
+  const ext = (path.trim().replace(/\.+$/, "").toLowerCase().split(".").pop() ?? "");
   const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
   const isVideo = ["mp4", "mov", "webm"].includes(ext);
   const isAudio = ["wav", "mp3", "flac"].includes(ext);

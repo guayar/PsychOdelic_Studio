@@ -281,6 +281,8 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
                 resolve_within(root, body.rel_path)
             except UnsafePath as exc:
                 raise HTTPException(422, f"sciezka poza projektem: {exc}")
+            if not (Path(root) / body.rel_path).is_file():
+                raise HTTPException(422, f"nie ma takiego pliku w projekcie: {body.rel_path!r} (sprawdz nazwe, np. koncowa kropke)")
             vid = str(uuid.uuid4())
             now = utc_now()
             conn.execute("INSERT INTO render_variants (id, project_id, review_status, is_active, created_at)"
