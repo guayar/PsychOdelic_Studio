@@ -7,16 +7,16 @@ import { InputPicker } from "./InputPicker";
 const KINDS = ["new_only", "cumulative", "raw", "preview", "audio_slice", "other"] as const;
 
 // Podglad wyniku: wideo z kontrolkami, obraz lub audio. Plik czytany z katalogu projektu (media endpoint).
-function MediaPreview({ projectId, path }: { projectId: string; path: string }) {
+function MediaPreview({ projectId, path, autoPlay }: { projectId: string; path: string; autoPlay?: boolean }) {
   if (!path) return null;
   const src = `/api/projects/${projectId}/media?path=${encodeURIComponent(path)}`;
   const ext = (path.toLowerCase().split(".").pop() ?? "");
   if (["png", "jpg", "jpeg", "webp"].includes(ext))
     return <img src={src} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />;
   if (["mp4", "mov", "webm"].includes(ext))
-    return <video src={src} controls preload="metadata" playsInline style={{ width: "100%", maxHeight: 360, background: "#000", borderRadius: 8, marginTop: 8 }} />;
+    return <video src={src} controls autoPlay={autoPlay} preload="metadata" playsInline style={{ width: "100%", maxHeight: 360, background: "#000", borderRadius: 8, marginTop: 8 }} />;
   if (["wav", "mp3", "flac"].includes(ext))
-    return <audio src={src} controls preload="metadata" style={{ width: "100%", marginTop: 8 }} />;
+    return <audio src={src} controls autoPlay={autoPlay} preload="metadata" style={{ width: "100%", marginTop: 8 }} />;
   return null;
 }
 
@@ -49,6 +49,7 @@ export function ReviewTab({ project }: { project: Project }) {
     } catch (e) { setMsg({ kind: "err", text: (e as Error).message }); }
   }
 
+  const [playing, setPlaying] = useState<string | null>(null);
   const pending = variants.filter((v) => v.review_status === "pending");
   const done = variants.filter((v) => v.review_status !== "pending");
 
@@ -78,6 +79,15 @@ export function ReviewTab({ project }: { project: Project }) {
       </div>
 
       <div>
+        {playing && (
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span className="mono" style={{ color: "var(--dim)", fontSize: 12 }}>{playing}</span>
+              <button className="ghost" onClick={() => setPlaying(null)}>{t("review.playerClose")}</button>
+            </div>
+            <MediaPreview projectId={project.id} path={playing} autoPlay />
+          </div>
+        )}
         <h3 style={{ marginBottom: 10 }}>{t("review.pending", { n: pending.length })}</h3>
         {pending.length === 0 && <div className="empty">{t("review.none")}</div>}
         {pending.map((v) => (
@@ -86,7 +96,7 @@ export function ReviewTab({ project }: { project: Project }) {
               <div className="row"><span className="badge pending">{v.kind ? t(kindKey(v.kind) as "kind.raw") : "—"}</span>
                 <span className="mono" style={{ color: "var(--dim)" }}>{v.frames ?? "?"} kl. · {v.fps ?? "?"} fps</span></div>
               <div className="path" style={{ marginTop: 6 }}>{v.abs_path}</div>
-              <MediaPreview projectId={project.id} path={v.abs_path ?? ""} />
+              <div className="row" style={{ marginTop: 8 }}><button className="ghost" onClick={() => setPlaying(v.abs_path ?? null)}>▶ {t("review.play")}</button></div>
               <input style={{ marginTop: 8 }} placeholder={t("review.note")} value={notes[v.id] ?? ""}
                 onChange={(e) => setNotes((n) => ({ ...n, [v.id]: e.target.value }))} />
             </div>
