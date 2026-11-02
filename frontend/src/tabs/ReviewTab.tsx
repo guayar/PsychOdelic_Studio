@@ -6,6 +6,20 @@ import { InputPicker } from "./InputPicker";
 
 const KINDS = ["new_only", "cumulative", "raw", "preview", "audio_slice", "other"] as const;
 
+// Podglad wyniku: wideo z kontrolkami, obraz lub audio. Plik czytany z katalogu projektu (media endpoint).
+function MediaPreview({ projectId, path }: { projectId: string; path: string }) {
+  if (!path) return null;
+  const src = `/api/projects/${projectId}/media?path=${encodeURIComponent(path)}`;
+  const ext = (path.toLowerCase().split(".").pop() ?? "");
+  if (["png", "jpg", "jpeg", "webp"].includes(ext))
+    return <img src={src} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />;
+  if (["mp4", "mov", "webm"].includes(ext))
+    return <video src={src} controls preload="metadata" playsInline style={{ width: "100%", maxHeight: 360, background: "#000", borderRadius: 8, marginTop: 8 }} />;
+  if (["wav", "mp3", "flac"].includes(ext))
+    return <audio src={src} controls preload="metadata" style={{ width: "100%", marginTop: 8 }} />;
+  return null;
+}
+
 export function ReviewTab({ project }: { project: Project }) {
   const { t } = useI18n();
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -72,6 +86,7 @@ export function ReviewTab({ project }: { project: Project }) {
               <div className="row"><span className="badge pending">{v.kind ? t(kindKey(v.kind) as "kind.raw") : "—"}</span>
                 <span className="mono" style={{ color: "var(--dim)" }}>{v.frames ?? "?"} kl. · {v.fps ?? "?"} fps</span></div>
               <div className="path" style={{ marginTop: 6 }}>{v.abs_path}</div>
+              <MediaPreview projectId={project.id} path={v.abs_path ?? ""} />
               <input style={{ marginTop: 8 }} placeholder={t("review.note")} value={notes[v.id] ?? ""}
                 onChange={(e) => setNotes((n) => ({ ...n, [v.id]: e.target.value }))} />
             </div>
