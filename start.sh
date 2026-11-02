@@ -7,6 +7,10 @@ if [ ! -x .venv/bin/python ]; then
   echo "Brak instalacji. Uruchom najpierw: ./install.sh" >&2
   exit 1
 fi
+# Ikonka w menu i na pasku: odtwarzana przy kazdym starcie (idempotentne, bez sudo).
+if [ -x desktop/install_launcher.sh ]; then
+  bash desktop/install_launcher.sh "$HERE" >/dev/null 2>&1 || echo "Nie udalo sie zainstalowac ikonki (launcher)." >&2
+fi
 export PSYCHODELIC_DATA="${PSYCHODELIC_DATA:-$HOME/.local/share/psychodelic-studio}"
 export PSYCHODELIC_UI_DIR="$HERE/frontend/dist"
 PORT="${PSYCHODELIC_PORT:-8765}"
