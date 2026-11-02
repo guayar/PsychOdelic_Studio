@@ -6,7 +6,7 @@ type Entry = { name: string; kind: string; path: string; size: number };
 type Listing = { path: string; parent: string | null; entries: Entry[] };
 
 // Przegladarka plikow z dowolnego katalogu. Wybrany plik spoza ComfyUI/input jest kopiowany do ComfyUI/input.
-export function InputPicker({ onPick, kinds, label }: { onPick: (name: string) => void; kinds?: string[]; label?: string }) {
+export function InputPicker({ onPick, kinds, label, projectId }: { onPick: (name: string) => void; kinds?: string[]; label?: string; projectId?: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [dir, setDir] = useState<string>("");
@@ -32,7 +32,8 @@ export function InputPicker({ onPick, kinds, label }: { onPick: (name: string) =
   async function choose(e: Entry) {
     setBusy(true);
     try {
-      const r = await api.post<{ name: string }>("/api/fs/import", { path: e.path });
+      const url = projectId ? `/api/projects/${projectId}/import` : "/api/fs/import";
+      const r = await api.post<{ name: string }>(url, { path: e.path });
       onPick(r.name);
       setOpen(false);
     } catch (ex) { setErr((ex as Error).message); }
@@ -58,7 +59,7 @@ export function InputPicker({ onPick, kinds, label }: { onPick: (name: string) =
               <code className="mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data?.path ?? dir}</code>
             </div>
             <input autoFocus value={q} placeholder={t("pick.search")} onChange={(e) => setQ(e.target.value)} style={{ width: "100%", marginBottom: 8 }} />
-            <div className="hint" style={{ marginBottom: 8 }}>{t("pick.hint")}</div>
+            <div className="hint" style={{ marginBottom: 8 }}>{projectId ? t("pick.hintProject") : t("pick.hint")}</div>
             {err && <div className="alert err">{err}</div>}
             {busy && <div className="hint">{t("pick.importing")}</div>}
             <div className="picker-grid">

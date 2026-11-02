@@ -20,7 +20,7 @@ from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate,
 from ..adapters.comfy_scene import SceneError, build_scene_graph, submit as comfy_submit
 from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..comfy_input import default_input_dir, list_inputs, resolve_input_file
-from ..fs_browse import import_to_input, list_dir, resolve_file
+from ..fs_browse import copy_into, import_to_input, list_dir, resolve_file
 from ..director.prompt_rules import BASE as BASE_RULES_PREFIX, rules_for
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
@@ -483,6 +483,18 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
             raise HTTPException(422, str(exc))
         except OSError as exc:
             raise HTTPException(500, f"nie udalo sie skopiowac: {exc}")
+
+    @app.post("/api/projects/{pid}/import", status_code=201)
+    def project_import(pid: str, body: ImportIn):
+        with lock:
+            proj = _project_or_404(pid)
+        try:
+            name = copy_into(body.path, Path(proj["root_path"]) / "renders")
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except OSError as exc:
+            raise HTTPException(500, f"nie udalo sie skopiowac: {exc}")
+        return {"name": f"renders/{name}"}
 
     @app.get("/api/system/status")
     def system_status():

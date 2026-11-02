@@ -54,10 +54,14 @@ def _safe(name):
 
 
 def import_to_input(path, input_root):
+    return copy_into(path, input_root)
+
+
+def copy_into(path, target_dir):
     src = resolve_file(path)
     if src is None:
         raise ValueError("to nie jest plik multimedialny")
-    root = Path(input_root)
+    root = Path(target_dir)
     root.mkdir(parents=True, exist_ok=True)
     base = _safe(src.name)
     target, n = root / base, 2
