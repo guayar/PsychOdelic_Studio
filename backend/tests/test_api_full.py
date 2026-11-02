@@ -118,3 +118,23 @@ def test_h3_media_refs_api_limit(client, app):
         "ref_videos": ["a.mp4"], "ref_audios": ["a.wav"]})
     assert ok.status_code == 201
     assert ok.json()["command"]["media_refs"] == {"videos": ["a.mp4"], "audios": ["a.wav"]}
+
+
+def test_project_delete_removes_rows_keeps_files(client, app):
+    pid = make_project(client)
+    rel = make_prompt(client, pid, app)
+    root = Path(client.get(f"/api/projects/{pid}").json()["root_path"])
+    assert client.post(f"/api/projects/{pid}/h3/prepare", json={
+        "prefix": "shots/d1", "seed": 1, "prompt_files": [rel]}).status_code == 201
+    r = client.delete(f"/api/projects/{pid}")
+    assert r.status_code == 200 and r.json()["files_kept"] == str(root)
+    assert client.get(f"/api/projects/{pid}").status_code == 404
+    assert all(p["id"] != pid for p in client.get("/api/projects").json())
+    assert root.exists(), "pliki projektu nie moga byc kasowane"
+    assert client.delete(f"/api/projects/{pid}").status_code == 404
+
+
+def test_project_delete_allows_same_name_again(client):
+    pid = make_project(client)
+    client.delete(f"/api/projects/{pid}")
+    assert make_project(client) != pid

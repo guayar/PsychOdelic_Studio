@@ -42,6 +42,20 @@ export function App() {
     return () => clearInterval(timer);
   }, [loadProjects, loadStatus]);
 
+  async function deleteSelected() {
+    const proj = projects.find((p) => p.id === selected);
+    if (!proj) return;
+    if (!window.confirm(t("projects.deleteConfirm", { name: proj.name }))) return;
+    try {
+      await api.del(`/api/projects/${proj.id}`);
+      setSelected(null);
+      await loadProjects();
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   async function createProject() {
     const name = newName.trim();
     if (!name) return;
@@ -89,6 +103,7 @@ export function App() {
               onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createProject()} />
           </label>
           <button className="primary" onClick={createProject} disabled={!newName.trim()}>{t("projects.create")}</button>
+          <button className="ghost danger" onClick={deleteSelected} disabled={!selected}>{t("projects.delete")}</button>
         </div>
       </aside>
 

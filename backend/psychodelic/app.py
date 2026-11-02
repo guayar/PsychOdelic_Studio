@@ -14,7 +14,7 @@ from . import __version__
 from .db import connect, migrate
 from .doctor import run_doctor
 from .jobs import JobStore
-from .projects import DuplicateProject, create_project, get_project, list_projects
+from .projects import DuplicateProject, create_project, delete_project, get_project, list_projects
 
 DEFAULT_DATA = Path(os.environ.get("PSYCHODELIC_DATA", Path.home() / ".local/share/psychodelic-studio"))
 DEFAULT_COMFY = os.environ.get("PSYCHODELIC_COMFY_URL", "http://127.0.0.1:8188")
@@ -74,6 +74,14 @@ def create_app(data_dir=None, comfy_url=None):
         if proj is None:
             raise HTTPException(status_code=404, detail="brak projektu")
         return proj
+
+    @app.delete("/api/projects/{project_id}")
+    def projects_delete(project_id: str):
+        with lock:
+            result = delete_project(conn, project_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="brak projektu")
+        return result
 
     @app.post("/api/jobs", status_code=201)
     def jobs_create(body: JobIn):

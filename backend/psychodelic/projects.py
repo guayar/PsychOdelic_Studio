@@ -44,3 +44,37 @@ def get_project(conn, project_id):
 def list_projects(conn):
     return [dict(r) for r in conn.execute("SELECT * FROM projects ORDER BY created_at, id")]
 
+
+
+def delete_project(conn, project_id):
+    """Usuwa projekt z bazy studia (wraz z powiazanymi wierszami). Pliki na dysku NIE sa kasowane.
+
+    Zwraca None, gdy projektu nie ma; w przeciwnym razie slownik z katalogiem, ktory zostal na dysku.
+    Kolejnosc kasowania respektuje klucze obce (od lisci do korzenia).
+    """
+    proj = get_project(conn, project_id)
+    if proj is None:
+        return None
+    pid = project_id
+    variants = "SELECT id FROM render_variants WHERE project_id = ?"
+    jobs = "SELECT id FROM jobs WHERE project_id = ?"
+    with transaction(conn):
+        conn.execute(f"DELETE FROM artifacts WHERE variant_id IN ({variants})", (pid,))
+        conn.execute(f"DELETE FROM reviews WHERE variant_id IN ({variants})", (pid,))
+        conn.execute("DELETE FROM timeline_items WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM render_variants WHERE project_id = ?", (pid,))
+        conn.execute(f"DELETE FROM resource_leases WHERE job_id IN ({jobs})", (pid,))
+        conn.execute("DELETE FROM jobs WHERE project_id = ?", (pid,))
+        conn.execute("UPDATE generation_nodes SET parent_id = NULL WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM generation_nodes WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM reference_assignments WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM assets WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM scene_plans WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM director_sessions WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM cues WHERE project_id = ?", (pid,))
+        conn.execute("DELETE FROM projects WHERE id = ?", (pid,))
+        conn.execute("INSERT INTO audit_events (project_id, job_id, event, detail_json, created_at)"
+                     " VALUES (?, NULL, 'project_deleted', ?, ?)",
+                     (pid, json.dumps({"name": proj["name"], "files_kept": proj["root_path"]}, ensure_ascii=False),
+                      utc_now()))
+    return {"deleted": pid, "name": proj["name"], "files_kept": proj["root_path"]}
