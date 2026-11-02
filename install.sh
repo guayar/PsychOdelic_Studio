@@ -48,9 +48,6 @@ ARGS=(--report "$HERE/install_report.json")
 PYTHONPATH="$HERE/backend" .venv/bin/python -m psychodelic.installer "${ARGS[@]}"  # blad = przerwanie instalacji
 
 echo "== 5/5 Ikonka w menu aplikacji"
-APPS="$HOME/.local/share/applications"
-mkdir -p "$APPS"
-sed "s#@STUDIO_DIR@#$HERE#g" desktop/psychodelic-studio.desktop.in > "$APPS/psychodelic-studio.desktop"
-command -v update-desktop-database >/dev/null && update-desktop-database "$APPS" >/dev/null 2>&1 || true
+bash "$HERE/desktop/install_launcher.sh" "$HERE"
 echo "Gotowe. Uruchom: $HERE/start.sh  (albo ikonka 'PsychOdelic Studio')"
 echo "Raport brakow: $HERE/install_report.json  (sekcja 'missing')"
