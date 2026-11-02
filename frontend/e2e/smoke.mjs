@@ -25,8 +25,8 @@ await page.getByText("zadania: 0").first().waitFor();
 ok("utworzono projekt z UI");
 
 // 2. plan ujec: wpisz czasy i sprawdz klatki
-await page.locator("textarea").first().fill("The gardener stands still and watches the roses.");
-await page.locator("textarea").nth(1).fill("He turns slowly toward the window; camera locked off.");
+await page.getByPlaceholder("The gardener stands still and watches the roses…").first().fill("The gardener stands still and watches the roses.");
+await page.getByPlaceholder("The gardener stands still and watches the roses…").nth(1).fill("He turns slowly toward the window; camera locked off.");
 await page.getByRole("button", { name: "Sprawdź plan" }).click();
 await page.getByText("Wynik · 2 ujęć").waitFor();
 const frames = await page.locator("td.num .badge").allInnerTexts();

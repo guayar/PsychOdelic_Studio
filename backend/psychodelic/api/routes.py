@@ -16,7 +16,8 @@ from ..director.tools import ToolRegistry, Tool, READ
 from ..jobs import JobStore
 from ..media.timeline import Clip, TimelineError, export_csv, export_json, validate
 from ..orchestrator.gpu import decide_render, read_vram
-from ..director.llm import NullRuntime, OllamaRuntime
+from ..director.llm import NullRuntime, OllamaRuntime, generate as llm_generate, list_models as llm_list
+from ..settings import DEFAULTS as SETTINGS_DEFAULTS, ROLES, load_settings, save_settings
 from ..projects import DuplicateProject, get_project, list_projects
 from ..security import UnsafePath, resolve_within, safe_name
 
@@ -315,6 +316,56 @@ def register(app, conn, lock, data_dir, llm_url="http://127.0.0.1:11434", comfy_
         except TimelineError as exc:
             raise HTTPException(422, str(exc))
         raise HTTPException(422, "format: json | csv")
+
+    class SettingsIn(BaseModel):
+        director_model: str | None = Field(default=None, max_length=100)
+
+    class DirectorIn(BaseModel):
+        brief: str = Field(min_length=1, max_length=4000)
+        project_id: str | None = Field(default=None, max_length=64)
+
+    DIRECTOR_SYSTEM = (
+        "Jestes asystentem rezysera teledysku. Odpowiadasz po polsku. Podziel opis na ujecia (jedno ujecie = jeden "
+        "zwrot akcji albo jeden ruch kamery). Dla kazdego ujecia podaj: czas start-koniec w sekundach, nazwana kamere, "
+        "opis akcji (zdania pozytywne, bez slow 'nie', 'bez', 'brak'), a jesli potrzebne, dzwiek tla. "
+        "Nie pisz dialogow, chyba ze autor je podal w cudzyslowie. Bez wstepow i podsumowan.\n\n"
+    )
+
+    @app.get("/api/settings")
+    def settings_get():
+        return {"settings": load_settings(data_dir), "roles": ROLES}
+
+    @app.put("/api/settings")
+    def settings_put(body: SettingsIn):
+        try:
+            return {"settings": save_settings(data_dir, body.model_dump(exclude_none=True))}
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+    def _previous_scenes(pid, limit=6000):
+        pdir = Path(_root(pid)) / "prompts"
+        if not pdir.is_dir():
+            return ""
+        text = "\n".join(f"[{f.stem}] {f.read_text(encoding='utf-8').strip()}" for f in sorted(pdir.glob("*.txt")))
+        if len(text) > limit:
+            return "(skrocone, najnowsze)\n" + text[-limit:]
+        return text
+
+    @app.post("/api/director/llm-plan")
+    def director_llm_plan(body: DirectorIn):
+        model = load_settings(data_dir).get("director_model", "")
+        if not model:
+            raise HTTPException(422, "wybierz model Directora w zakladce Stan systemu")
+        context = _previous_scenes(body.project_id) if body.project_id else ""
+        head = DIRECTOR_SYSTEM
+        if context:
+            head += ("Poprzednie sceny (prompty juz zapisane w projekcie; zachowaj ciaglosc postaci, miejsca i rekwizytow):\n"
+                     + context + "\n\n")
+        try:
+            text = llm_generate(model, head + "Opis:\n" + body.brief, base_url=llm_url or "http://127.0.0.1:11434")
+        except (OSError, ValueError) as exc:
+            raise HTTPException(503, f"Ollama nie odpowiada ({type(exc).__name__})")
+        return {"model": model, "text": text, "note": "Propozycja do przejrzenia. Nic nie zostaje zapisane."}
 
     @app.get("/api/system/status")
     def system_status():

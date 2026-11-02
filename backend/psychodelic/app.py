@@ -31,7 +31,7 @@ class JobIn(BaseModel):
     payload: dict = Field(default_factory=dict)
 
 
-def create_app(data_dir=None, comfy_url=None):
+def create_app(data_dir=None, comfy_url=None, llm_url=None):
     data_dir = Path(data_dir or DEFAULT_DATA)
     data_dir.mkdir(parents=True, exist_ok=True)
     conn = connect(data_dir / "studio.db")
@@ -99,7 +99,7 @@ def create_app(data_dir=None, comfy_url=None):
         return job
 
     from .api.routes import register
-    register(app, conn, lock, data_dir, comfy_url=comfy)
+    register(app, conn, lock, data_dir, comfy_url=comfy, **({"llm_url": llm_url} if llm_url else {}))
 
     # Zbudowany frontend (frontend/dist) serwowany z tego samego originu. Trasy /api maja pierwszenstwo.
     ui_dir = Path(os.environ.get("PSYCHODELIC_UI_DIR", Path(__file__).resolve().parents[2] / "frontend" / "dist"))

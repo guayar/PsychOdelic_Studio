@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type PlanResult, type Project } from "../api";
 import { useI18n } from "../i18n";
+import { DirectorPanel } from "./DirectorPanel";
 
 type Beat = { start: string; end: string; text: string };
 const parse = (s: string) => {
@@ -53,6 +54,7 @@ export function PlanTab({ project }: { project: Project }) {
 
   return (
     <div className="stack">
+      <DirectorPanel projectId={project.id} />
       <div>
         <h2>{t("plan.title")}</h2>
         <p className="lead">{t("plan.lead")}</p>

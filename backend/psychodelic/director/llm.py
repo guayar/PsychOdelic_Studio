@@ -32,3 +32,27 @@ class OllamaRuntime:
         except (urllib.error.URLError, OSError, ValueError) as exc:
             return {"runtime": "ollama", "status": "NIEDOSTEPNE_LUB_WYMAGA_ZMIANY",
                     "detail": f"brak odpowiedzi ({type(exc).__name__})"}
+
+
+LOCAL_PREFIXES = ("http://127.0.0.1", "http://localhost")
+
+
+def _local(base_url):
+    if not base_url.startswith(LOCAL_PREFIXES):
+        raise ValueError("LLM tylko lokalnie (127.0.0.1/localhost)")
+    return base_url
+
+
+def list_models(base_url="http://127.0.0.1:11434", timeout=2.0):
+    """Nazwy modeli zainstalowanych w Ollamie (tylko odczyt). Rzuca OSError, gdy serwer nie odpowiada."""
+    with urllib.request.urlopen(f"{_local(base_url)}/api/tags", timeout=timeout) as resp:
+        return [m.get("name") for m in json.load(resp).get("models", []) if m.get("name")]
+
+
+def generate(model, prompt, base_url="http://127.0.0.1:11434", timeout=300.0):
+    """Jednorazowe generowanie tekstu w Ollamie. Model nie jest ladowany ani zwalniany poza tym wywolaniem."""
+    body = json.dumps({"model": model, "prompt": prompt, "stream": False}).encode("utf-8")
+    req = urllib.request.Request(f"{_local(base_url)}/api/generate", data=body,
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return str(json.load(resp).get("response", "")).strip()
