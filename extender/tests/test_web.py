@@ -69,3 +69,23 @@ def test_page_keeps_selection_separate_from_tree_state():
     html = (Path(__file__).resolve().parents[1] / "web" / "index.html").read_text(encoding="utf-8")
     assert "state.sel" not in html
     assert "let sel=null" in html
+
+
+def test_media_inherit_limits_and_picker_list(tmp_path):
+    inp = tmp_path / "input"; inp.mkdir()
+    (inp / "a.png").write_bytes(b"x"); (inp / "v.mp4").write_bytes(b"x"); (inp / "s.wav").write_bytes(b"x")
+    c = TestClient(create_app(str(tmp_path / "chain.json"), comfy_input=str(inp)))
+    root = c.post("/api/scenes", json={"title": "R"}).json()["id"]
+    child = c.post("/api/scenes", json={"title": "C", "parent": root}).json()["id"]
+    c.post(f"/api/scenes/{root}/media", json={"kind": "video", "name": "v.mp4"})
+    c.post(f"/api/scenes/{child}/media", json={"kind": "audio", "name": "s.wav"})
+    scenes = c.get("/api/tree").json()["scenes"]
+    cm = next(s for s in scenes if s["id"] == child)["effective_media"]
+    assert cm == {"video": ["v.mp4"], "audio": ["s.wav"]}
+    assert c.post(f"/api/scenes/{child}/media", json={"kind": "video", "name": "x.mp4"}).status_code == 200
+    for n in ["a.mp4", "b.mp4"]:
+        c.post(f"/api/scenes/{child}/media", json={"kind": "video", "name": n})
+    assert c.post(f"/api/scenes/{child}/media", json={"kind": "video", "name": "c.mp4"}).status_code == 422
+    items = {i["name"]: i["kind"] for i in c.get("/api/inputs").json()["items"]}
+    assert items == {"a.png": "image", "v.mp4": "video", "s.wav": "audio"}
+    assert [i["name"] for i in c.get("/api/inputs", params={"kind": "audio"}).json()["items"]] == ["s.wav"]

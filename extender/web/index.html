@@ -22,6 +22,9 @@ video{width:100%;max-height:360px;background:#000;border-radius:8px}
   <div class="row"><button class="primary" onclick="addScene()">+ dodaj pod wybrana</button>
   <button onclick="addRoot()">+ korzen</button></div>
   <div id="tree"></div></div>
+<div id="picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6)"><div style="background:#171a22;margin:60px auto;max-width:640px;max-height:80vh;overflow:auto;border-radius:10px;padding:16px">
+  <div class="row" style="justify-content:space-between"><h3 id="pickTitle" style="margin:0"></h3><button onclick="closePicker()">zamknij</button></div>
+  <div class="hint" id="pickRoot"></div><div id="pickList"></div></div></div>
 <div id="right"><div id="editor"><p class="hint">Wybierz scene z listy.</p></div></div>
 <script>
 let state={scenes:[],root:null,oug_dir:""};
@@ -60,7 +63,13 @@ function renderEditor(){
     <button class="danger" onclick="delScene()">Usun scene</button></div></div>
   <div class="card"><h4>Postacie (dziedzicza sie w dol drzewa)</h4>
     <div class="row"><input id="fref" placeholder="nazwa pliku z ComfyUI/input, np. gardener.png"><button onclick="addRef()">+ dodaj</button></div>
-    ${s.effective_refs.map(r=>`<div class="row"><code>${r}</code>${s.own_refs?'':''}<button onclick="delRef('${r}')">usun z tej sceny</button></div>`).join('')||'<p class="hint">brak</p>'}
+    ${s.effective_refs.map(r=>`<div class="row"><code>obraz: ${r}</code><button onclick="delRef('${r}')">usun z tej sceny</button></div>`).join('')||'<p class="hint">brak</p>'}
+    <div class="row"><button onclick="openPicker('image')">wybierz obraz z listy</button></div>
+  </div>
+  <div class="card"><h4>Referencje wideo i audio (dziedzicza sie w dol drzewa)</h4>
+    <div class="row"><button onclick="openPicker('video')">+ wideo (3)</button><button onclick="openPicker('audio')">+ audio (3)</button></div>
+    ${['video','audio'].map(k=>(s.effective_media[k]||[]).map(n=>`<div class="row"><code>${k}: ${n}</code><button onclick="delMedia('${k}','${encodeURIComponent(n)}')">usun z tej sceny</button></div>`).join('')).join('')||'<p class="hint">brak</p>'}
+    <p class="hint">Uwaga: produkcyjny skrypt moze nie przyjmowac wideo i audio (patrz ostrzezenia w planie).</p>
   </div>
   <div class="card"><h4>Ustawienia (zapisywane w tej scenie)</h4>
     <div class="row"><label><input type="checkbox" ${c.fullres?'checked':''} onchange="setS('fullres',this.checked)"> pelna rozdzielczosc 1344x768</label>
@@ -89,6 +98,15 @@ function renderEditor(){
 async function savePrompt(){const s=byId(sel); await api('PUT',`/api/scenes/${s.id}/prompt`,{title:$('ftitle').value,prompt:$('fprompt').value,parent:null}); load();}
 async function setS(path,value){await api('PUT',`/api/scenes/${sel}/setting`,{path,value}); load();}
 async function addRef(){const n=$('fref').value.trim(); if(!n) return; try{await api('POST',`/api/scenes/${sel}/refs`,{name:n});}catch(e){alert(e.message)} load();}
+let pickKind=null;
+async function openPicker(kind){ pickKind=kind; $('picker').style.display='block'; $('pickTitle').textContent='Wybierz: '+(kind==='image'?'obraz':kind);
+  const r=await api('GET','/api/inputs'+(kind==='image'?'?kind=image':'?kind='+kind)); $('pickRoot').textContent=r.root+(r.exists?'':' (brak katalogu)');
+  $('pickList').innerHTML=r.items.map(i=>`<div class="node" onclick="pick('${i.name.replace(/'/g,"\\'")}')">${i.name} <span class="meta">${i.kind}</span></div>`).join('')||'<p class="hint">Brak plikow tego typu w ComfyUI/input.</p>';
+}
+function closePicker(){ $('picker').style.display='none'; }
+async function pick(name){ try{ if(pickKind==='image'){ await api('POST',`/api/scenes/${sel}/refs`,{name}); }
+  else { await api('POST',`/api/scenes/${sel}/media`,{kind:pickKind,name}); } closePicker(); load(); }catch(e){ alert(e.message); } }
+async function delMedia(kind,name){ await api('DELETE',`/api/scenes/${sel}/media/${kind}/${name}`); load(); }
 async function delRef(n){await api('DELETE',`/api/scenes/${sel}/refs/${encodeURIComponent(n)}`); load();}
 async function gen(exec){ if(exec && !confirm('Uruchomic extender dla tej sceny? Zuzywa GPU.')) return;
   $('genout').innerHTML='<p class="hint">…</p>';

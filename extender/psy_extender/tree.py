@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 
 MAX_REFS = 9
+MEDIA_LIMITS = {"video": 3, "audio": 3}   # limity H3 wg kodu tritant
 DEFAULTS = {
     "fullres": True,              # 1344x768
     "width": 1344,
@@ -66,7 +67,7 @@ class Tree:
         else:
             self.scene(parent)
         self.data["scenes"][sid] = {"id": sid, "title": title, "parent": parent, "prompt": prompt,
-                                    "seed": 1234, "own_refs": [], "own_settings": {}, "output": None}
+                                    "seed": 1234, "own_refs": [], "own_media": {"video": [], "audio": []}, "own_settings": {}, "output": None}
         self.save()
         return sid
 
@@ -93,6 +94,34 @@ class Tree:
         if len(refs) > MAX_REFS:
             raise TreeError(f"scena {sid}: {len(refs)} referencji, limit to {MAX_REFS}")
         return refs
+
+    def effective_media(self, sid):
+        """Wideo i audio dziedziczone jak postacie. Limity: 3 wideo, 3 audio."""
+        out = {"video": [], "audio": []}
+        for s in self.ancestors(sid):
+            for kind in out:
+                for name in s.get("own_media", {}).get(kind, []):
+                    if name not in out[kind]:
+                        out[kind].append(name)
+        for kind, lim in MEDIA_LIMITS.items():
+            if len(out[kind]) > lim:
+                raise TreeError(f"scena {sid}: {len(out[kind])} referencji {kind}, limit {lim}")
+        return out
+
+    def add_media(self, sid, kind, name):
+        if kind not in MEDIA_LIMITS:
+            raise TreeError("rodzaj: video albo audio (obrazy idą przez add_ref)")
+        s = self.scene(sid)
+        s.setdefault("own_media", {"video": [], "audio": []}).setdefault(kind, [])
+        if name not in s["own_media"][kind]:
+            s["own_media"][kind].append(name)
+        self.effective_media(sid)  # sprawdza limit
+        self.save()
+
+    def remove_media(self, sid, kind, name):
+        s = self.scene(sid)
+        s.setdefault("own_media", {"video": [], "audio": []})[kind] = [x for x in s["own_media"].get(kind, []) if x != name]
+        self.save()
 
     def effective_settings(self, sid):
         """Ustawienia: DEFAULTS <- ustawienia calego drzewa <- przodkowie <- ta scena."""

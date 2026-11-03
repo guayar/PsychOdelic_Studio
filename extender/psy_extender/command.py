@@ -18,6 +18,7 @@ def build(tree: Tree, sid, prefix, seed=None, prompt_rel=None, cont=None, oug_di
     s = tree.scene(sid)
     cfg = tree.effective_settings(sid)
     refs = tree.effective_refs(sid)
+    media = tree.effective_media(sid)
     parent = s["parent"]
     if cont is None and parent is not None:
         cont = tree.scene(parent).get("output")
@@ -46,5 +47,10 @@ def build(tree: Tree, sid, prefix, seed=None, prompt_rel=None, cont=None, oug_di
     seed = int(seed if seed is not None else s.get("seed", 1234))
     argv = ["python3", "-u", SCRIPT_REL, refine, prefix, str(seed), prompt_rel]
     root = Path(oug_dir) if oug_dir else None
+    warnings = []
+    if media["video"] or media["audio"]:
+        warnings.append("wideo/audio sa zapisane w scenie, ale NIE sa przekazywane do gen_extender_refine.py "
+                        "(skrypt zna tylko REFS/CONT/CTRL); sprawdz w skrypcie, czy ma wejscia na wideo i audio")
     return {"cwd": str(root) if root else None, "argv": argv, "env": env, "script": SCRIPT_REL,
+            "media": media, "warnings": warnings,
             "expected_output": f"ComfyUI/output/{prefix.replace('/', '_')}*.mp4"}

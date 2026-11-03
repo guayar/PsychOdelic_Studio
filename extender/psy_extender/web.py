@@ -30,6 +30,11 @@ class RefIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 
 
+class MediaIn(BaseModel):
+    kind: str = Field(pattern="^(video|audio)$")
+    name: str = Field(min_length=1, max_length=200)
+
+
 class GenIn(BaseModel):
     execute: bool = False
     prefix: str = ""
@@ -66,10 +71,11 @@ def create_app(chain_path, oug_dir="", comfy_output=None, comfy_input=None):
         for sid, sc in tree.data["scenes"].items():
             try:
                 refs = tree.effective_refs(sid)
+                media = tree.effective_media(sid)
                 cfg = tree.effective_settings(sid)
             except TreeError as exc:
-                refs, cfg = [], {"error": str(exc)}
-            scenes.append({**sc, "effective_refs": refs, "settings": cfg,
+                refs, media, cfg = [], {"video": [], "audio": []}, {"error": str(exc)}
+            scenes.append({**sc, "effective_refs": refs, "effective_media": media, "settings": cfg,
                            "children": [c["id"] for c in tree.children(sid)]})
         return {"root": tree.data.get("root"), "scenes": scenes, "oug_dir": oug_dir}
 
@@ -93,6 +99,34 @@ def create_app(chain_path, oug_dir="", comfy_output=None, comfy_input=None):
             tree.data["root"] = None
         tree.save()
         return {"deleted": sorted(doomed)}
+
+    @app.get("/api/inputs")
+    def list_inputs(kind: str = ""):
+        """Pliki z ComfyUI/input do wyboru (obrazy, wideo, audio)."""
+        exts = {"image": {".png", ".jpg", ".jpeg", ".webp"}, "video": {".mp4", ".mov", ".webm"}, "audio": {".wav", ".mp3", ".flac"}}
+        allowed = set().union(*exts.values()) if not kind else exts.get(kind, set())
+        items = []
+        if comfy_input.is_dir():
+            for p in sorted(comfy_input.iterdir(), key=lambda x: x.name.lower()):
+                if p.is_file() and p.suffix.lower() in allowed:
+                    k = next(k for k, e in exts.items() if p.suffix.lower() in e)
+                    items.append({"name": p.name, "kind": k})
+        return {"root": str(comfy_input), "exists": comfy_input.is_dir(), "items": items[:1000]}
+
+    @app.post("/api/scenes/{sid}/media")
+    def add_media(sid: str, body: MediaIn):
+        _scene(sid)
+        try:
+            tree.add_media(sid, body.kind, body.name)
+        except TreeError as exc:
+            _err(exc)
+        return {"media": tree.effective_media(sid)}
+
+    @app.delete("/api/scenes/{sid}/media/{kind}/{name}")
+    def remove_media(sid: str, kind: str, name: str):
+        _scene(sid)
+        tree.remove_media(sid, kind, name)
+        return {"media": tree.effective_media(sid)}
 
     @app.put("/api/scenes/{sid}/setting")
     def set_setting(sid: str, body: SettingIn):
