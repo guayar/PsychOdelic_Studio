@@ -113,6 +113,15 @@ def create_app(chain_path, oug_dir="", comfy_output=None, comfy_input=None):
                     items.append({"name": p.name, "kind": k})
         return {"root": str(comfy_input), "exists": comfy_input.is_dir(), "items": items[:1000]}
 
+    @app.get("/api/input-file")
+    def input_file(name: str):
+        """Podglad plikow z ComfyUI/input (obraz, wideo, audio). Tylko wewnatrz tego katalogu."""
+        allowed = {".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".webm", ".wav", ".mp3", ".flac"}
+        target = (comfy_input / name).resolve()
+        if comfy_input.resolve() not in target.parents or not target.is_file() or target.suffix.lower() not in allowed:
+            raise HTTPException(404, "brak pliku")
+        return FileResponse(target)
+
     @app.post("/api/scenes/{sid}/media")
     def add_media(sid: str, body: MediaIn):
         _scene(sid)

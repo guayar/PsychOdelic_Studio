@@ -89,3 +89,13 @@ def test_media_inherit_limits_and_picker_list(tmp_path):
     items = {i["name"]: i["kind"] for i in c.get("/api/inputs").json()["items"]}
     assert items == {"a.png": "image", "v.mp4": "video", "s.wav": "audio"}
     assert [i["name"] for i in c.get("/api/inputs", params={"kind": "audio"}).json()["items"]] == ["s.wav"]
+
+
+def test_input_file_preview_only_inside_input(tmp_path):
+    inp = tmp_path / "input"; inp.mkdir()
+    (inp / "gardener.png").write_bytes(b"PNG")
+    (inp / "notes.txt").write_text("x", encoding="utf-8")
+    c = TestClient(create_app(str(tmp_path / "chain.json"), comfy_input=str(inp)))
+    assert c.get("/api/input-file", params={"name": "gardener.png"}).content == b"PNG"
+    assert c.get("/api/input-file", params={"name": "notes.txt"}).status_code == 404
+    assert c.get("/api/input-file", params={"name": "../secret.png"}).status_code == 404

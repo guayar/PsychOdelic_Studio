@@ -16,6 +16,10 @@ input,textarea,select{background:#0c0e13;color:#e8e8ee;border:1px solid #3a4152;
 pre{background:#0c0e13;padding:10px;border-radius:8px;overflow:auto;max-height:260px;font-size:12px}
 video{width:100%;max-height:360px;background:#000;border-radius:8px}
 .hint{color:#8a90a0;font-size:12px}
+.pthumb{cursor:pointer;background:#0c0e13;border:1px solid #2a2e38;border-radius:8px;padding:4px}
+.pthumb img,.pthumb video{width:100%;height:80px;object-fit:cover;border-radius:6px;display:block;background:#000}
+.pthumb .meta{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker-kind{height:80px;display:flex;align-items:center;justify-content:center;color:#8a90a0}
 </style></head><body>
 <div id="left"><h3>Drzewo scen</h3>
   <div class="row"><input id="newTitle" placeholder="nowa scena (pod wybrana)"></div>
@@ -24,7 +28,11 @@ video{width:100%;max-height:360px;background:#000;border-radius:8px}
   <div id="tree"></div></div>
 <div id="picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6)"><div style="background:#171a22;margin:60px auto;max-width:640px;max-height:80vh;overflow:auto;border-radius:10px;padding:16px">
   <div class="row" style="justify-content:space-between"><h3 id="pickTitle" style="margin:0"></h3><button onclick="closePicker()">zamknij</button></div>
-  <div class="hint" id="pickRoot"></div><div id="pickList"></div></div></div>
+  <div class="hint" id="pickRoot"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+    <div id="pickList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:60vh;overflow:auto"></div>
+    <div><div id="pickPrev"></div><div class="row"><button id="pickAdd" class="primary" disabled onclick="confirmPick()">Dodaj do sceny</button></div></div>
+  </div></div></div>
 <div id="right"><div id="editor"><p class="hint">Wybierz scene z listy.</p></div></div>
 <script>
 let state={scenes:[],root:null,oug_dir:""};
@@ -98,14 +106,32 @@ function renderEditor(){
 async function savePrompt(){const s=byId(sel); await api('PUT',`/api/scenes/${s.id}/prompt`,{title:$('ftitle').value,prompt:$('fprompt').value,parent:null}); load();}
 async function setS(path,value){await api('PUT',`/api/scenes/${sel}/setting`,{path,value}); load();}
 async function addRef(){const n=$('fref').value.trim(); if(!n) return; try{await api('POST',`/api/scenes/${sel}/refs`,{name:n});}catch(e){alert(e.message)} load();}
-let pickKind=null;
-async function openPicker(kind){ pickKind=kind; $('picker').style.display='block'; $('pickTitle').textContent='Wybierz: '+(kind==='image'?'obraz':kind);
-  const r=await api('GET','/api/inputs'+(kind==='image'?'?kind=image':'?kind='+kind)); $('pickRoot').textContent=r.root+(r.exists?'':' (brak katalogu)');
-  $('pickList').innerHTML=r.items.map(i=>`<div class="node" onclick="pick('${i.name.replace(/'/g,"\\'")}')">${i.name} <span class="meta">${i.kind}</span></div>`).join('')||'<p class="hint">Brak plikow tego typu w ComfyUI/input.</p>';
+let pickKind=null, pickItems=[], pickSel=null;
+const inUrl=n=>'/api/input-file?name='+encodeURIComponent(n);
+async function openPicker(kind){ pickKind=kind; pickSel=null; $('picker').style.display='block';
+  $('pickTitle').textContent='Wybierz: '+(kind==='image'?'postac / obraz':kind);
+  const r=await api('GET','/api/inputs'+(kind==='image'?'?kind=image':'?kind='+kind));
+  pickItems=r.items; $('pickRoot').textContent=r.root+(r.exists?'':' (brak katalogu)');
+  $('pickList').innerHTML=pickItems.map((i,ix)=>{
+    const th = i.kind==='image' ? `<img src="${inUrl(i.name)}" loading="lazy">`
+             : i.kind==='video' ? `<video src="${inUrl(i.name)}" muted preload="metadata"></video>`
+             : '<div class="picker-kind">audio</div>';
+    return `<div class="pthumb" onclick="showPreview(${ix})">${th}<div class="meta">${i.name}</div></div>`;}).join('')
+    || '<p class="hint">Brak plikow tego typu w ComfyUI/input.</p>';
+  $('pickPrev').innerHTML='<p class="hint">Kliknij plik, zeby zobaczyc podglad.</p>';
+  $('pickAdd').disabled=true;
 }
+function showPreview(ix){ const i=pickItems[ix]; pickSel=i; const u=inUrl(i.name);
+  $('pickPrev').innerHTML = i.kind==='image' ? `<img src="${u}" style="max-width:100%;max-height:50vh">`
+    : i.kind==='video' ? `<video src="${u}" controls style="max-width:100%;max-height:50vh;background:#000"></video>`
+    : `<audio src="${u}" controls style="width:100%"></audio>`;
+  $('pickPrev').insertAdjacentHTML('beforeend', `<div class="hint">${i.name}</div>`);
+  $('pickAdd').disabled=false; }
 function closePicker(){ $('picker').style.display='none'; }
-async function pick(name){ try{ if(pickKind==='image'){ await api('POST',`/api/scenes/${sel}/refs`,{name}); }
-  else { await api('POST',`/api/scenes/${sel}/media`,{kind:pickKind,name}); } closePicker(); load(); }catch(e){ alert(e.message); } }
+async function confirmPick(){ if(!pickSel) return; try{
+  if(pickKind==='image') await api('POST',`/api/scenes/${sel}/refs`,{name:pickSel.name});
+  else await api('POST',`/api/scenes/${sel}/media`,{kind:pickKind,name:pickSel.name});
+  closePicker(); load(); }catch(e){ alert(e.message); } }
 async function delMedia(kind,name){ await api('DELETE',`/api/scenes/${sel}/media/${kind}/${name}`); load(); }
 async function delRef(n){await api('DELETE',`/api/scenes/${sel}/refs/${encodeURIComponent(n)}`); load();}
 async function gen(exec){ if(exec && !confirm('Uruchomic extender dla tej sceny? Zuzywa GPU.')) return;
