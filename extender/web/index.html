@@ -29,7 +29,7 @@ let sel=null; // zaznaczenie trzymane osobno: odswiezenie drzewa go nie kasuje
 const $=id=>document.getElementById(id);
 async function api(m,u,b){const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
   const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.detail||r.statusText); return j;}
-async function load(){state=await api('GET','/api/tree'); renderTree(); renderEditor();}
+async function load(){state=await api('GET','/api/tree'); if(!sel && state.root) sel=state.root; renderTree(); renderEditor();}
 function byId(id){return state.scenes.find(s=>s.id===id);}
 function renderTree(){
   const t=$('tree'); t.innerHTML='';
@@ -41,7 +41,7 @@ function renderTree(){
   if(state.root) walk(state.root,0);
   if(!state.root) t.innerHTML='<p class="hint">Brak drzewa. Dodaj korzen.</p>';
 }
-async function addRoot(){ if(state.root) return alert("Korzen juz jest: dodaj scene pod wybrana."); const title=$('newTitle').value||'Scena'; await api('POST','/api/scenes',{title,parent:null,prompt:''}); $('newTitle').value=''; load();}
+async function addRoot(){ if(state.root) return alert("Korzen juz jest. Kliknij scene na liscie (zostanie zaznaczona), a potem \"+ dodaj pod wybrana\"."); const title=$('newTitle').value||'Scena'; await api('POST','/api/scenes',{title,parent:null,prompt:''}); $('newTitle').value=''; load();}
 async function addScene(){ if(!sel) return alert('wybierz scene nadrzedna'); const title=$('newTitle').value||'Scena';
   await api('POST','/api/scenes',{title,parent:sel,prompt:''}); $('newTitle').value=''; load();}
 async function delScene(){ const s=byId(sel); if(!s) return;
