@@ -24,32 +24,33 @@ video{width:100%;max-height:360px;background:#000;border-radius:8px}
   <div id="tree"></div></div>
 <div id="right"><div id="editor"><p class="hint">Wybierz scene z listy.</p></div></div>
 <script>
-let state={scenes:[],root:null,oug_dir:"",sel:null};
+let state={scenes:[],root:null,oug_dir:""};
+let sel=null; // zaznaczenie trzymane osobno: odswiezenie drzewa go nie kasuje
 const $=id=>document.getElementById(id);
 async function api(m,u,b){const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
   const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.detail||r.statusText); return j;}
-async function load(){state=await api('GET','/api/tree'); renderTree(); if(state.sel||state.scenes.length) renderEditor();}
+async function load(){state=await api('GET','/api/tree'); renderTree(); renderEditor();}
 function byId(id){return state.scenes.find(s=>s.id===id);}
 function renderTree(){
   const t=$('tree'); t.innerHTML='';
   function walk(id,depth){const s=byId(id); if(!s) return;
-    const d=document.createElement('div'); d.className='node'+(state.sel===id?' sel':''); d.style.paddingLeft=(8+depth*16)+'px';
+    const d=document.createElement('div'); d.className='node'+(sel===id?' sel':''); d.style.paddingLeft=(8+depth*16)+'px';
     d.innerHTML=`${s.title}<div class="meta">${s.id} · postacie: ${s.effective_refs.length}${s.output?' · wynik':''}</div>`;
-    d.onclick=()=>{state.sel=id; renderTree(); renderEditor();}; t.appendChild(d);
+    d.onclick=()=>{sel=id; renderTree(); renderEditor();}; t.appendChild(d);
     s.children.forEach(c=>walk(c,depth+1));}
   if(state.root) walk(state.root,0);
   if(!state.root) t.innerHTML='<p class="hint">Brak drzewa. Dodaj korzen.</p>';
 }
-async function addRoot(){const title=$('newTitle').value||'Scena'; await api('POST','/api/scenes',{title,parent:null,prompt:''}); $('newTitle').value=''; load();}
-async function addScene(){ if(!state.sel) return alert('wybierz scene nadrzedna'); const title=$('newTitle').value||'Scena';
-  await api('POST','/api/scenes',{title,parent:state.sel,prompt:''}); $('newTitle').value=''; load();}
-async function delScene(){ const s=byId(state.sel); if(!s) return;
+async function addRoot(){ if(state.root) return alert("Korzen juz jest: dodaj scene pod wybrana."); const title=$('newTitle').value||'Scena'; await api('POST','/api/scenes',{title,parent:null,prompt:''}); $('newTitle').value=''; load();}
+async function addScene(){ if(!sel) return alert('wybierz scene nadrzedna'); const title=$('newTitle').value||'Scena';
+  await api('POST','/api/scenes',{title,parent:sel,prompt:''}); $('newTitle').value=''; load();}
+async function delScene(){ const s=byId(sel); if(!s) return;
   if(!confirm(`Usunac scene "${s.title}"? Pliki na dysku zostaja.`)) return;
   try{ await api('DELETE',`/api/scenes/${s.id}`); }
   catch(e){ if(!confirm(e.message+'\n\nUsunac cala galaz razem z potomkami?')) return; await api('DELETE',`/api/scenes/${s.id}?cascade=true`); }
-  state.sel=null; load();}
+  sel=null; load();}
 function renderEditor(){
-  const s=byId(state.sel); if(!s){$('editor').innerHTML='<p class="hint">Wybierz scene z listy.</p>'; return;}
+  const s=byId(sel); if(!s){$('editor').innerHTML='<p class="hint">Wybierz scene z listy.</p>'; return;}
   const c=s.settings; const sv=(k)=>{return k.split('.').reduce((o,x)=>o&&o[x],c);};
   $('editor').innerHTML=`
   <h2>${s.title} <span class="hint">${s.id}</span></h2>
@@ -85,13 +86,13 @@ function renderEditor(){
     ${s.output?`<h4>Wynik: ${s.output}</h4><video controls src="/api/file?name=${encodeURIComponent(s.output)}"></video>`:''}
   </div>`;
 }
-async function savePrompt(){const s=byId(state.sel); await api('PUT',`/api/scenes/${s.id}/prompt`,{title:$('ftitle').value,prompt:$('fprompt').value,parent:null}); load();}
-async function setS(path,value){await api('PUT',`/api/scenes/${state.sel}/setting`,{path,value}); load();}
-async function addRef(){const n=$('fref').value.trim(); if(!n) return; try{await api('POST',`/api/scenes/${state.sel}/refs`,{name:n});}catch(e){alert(e.message)} load();}
-async function delRef(n){await api('DELETE',`/api/scenes/${state.sel}/refs/${encodeURIComponent(n)}`); load();}
+async function savePrompt(){const s=byId(sel); await api('PUT',`/api/scenes/${s.id}/prompt`,{title:$('ftitle').value,prompt:$('fprompt').value,parent:null}); load();}
+async function setS(path,value){await api('PUT',`/api/scenes/${sel}/setting`,{path,value}); load();}
+async function addRef(){const n=$('fref').value.trim(); if(!n) return; try{await api('POST',`/api/scenes/${sel}/refs`,{name:n});}catch(e){alert(e.message)} load();}
+async function delRef(n){await api('DELETE',`/api/scenes/${sel}/refs/${encodeURIComponent(n)}`); load();}
 async function gen(exec){ if(exec && !confirm('Uruchomic extender dla tej sceny? Zuzywa GPU.')) return;
   $('genout').innerHTML='<p class="hint">…</p>';
-  try{ const r=await api('POST',`/api/scenes/${state.sel}/generate`,{execute:exec});
+  try{ const r=await api('POST',`/api/scenes/${sel}/generate`,{execute:exec});
     $('genout').innerHTML=`<pre>${JSON.stringify(r.plan,null,2)}</pre>`+(r.log?`<pre>${r.log.replace(/</g,'&lt;')}</pre>`:'')+(r.ok===false?'<p style="color:#ffb4b4">Blad extendera (patrz log).</p>':'');
     if(exec) load(); }catch(e){ $('genout').innerHTML=`<p style="color:#ffb4b4">${e.message}</p>`; } }
 load();

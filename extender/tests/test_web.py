@@ -62,3 +62,10 @@ def test_execute_writes_prompt_and_records_output(tmp_path):
     assert c.get("/api/file", params={"name": r["output"]}).status_code == 200
     assert (inp / r["output"]).is_file(), "wynik musi trafic do ComfyUI/input jako CONT nastepnej sceny"
     assert next(s for s in c.get("/api/tree").json()["scenes"] if s["id"] == sid)["output"] == r["output"]
+
+
+def test_page_keeps_selection_separate_from_tree_state():
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "web" / "index.html").read_text(encoding="utf-8")
+    assert "state.sel" not in html
+    assert "let sel=null" in html
